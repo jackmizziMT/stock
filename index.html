@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freezer Stock — Il-Kċina ta' Lucija</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#1C1511;background:#F8F5F0;min-height:100vh}
+.hdr{background:#fff;border-bottom:1px solid #EDE8E1;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+.wrap{display:flex;min-height:calc(100vh - 53px)}
+.sb{width:185px;flex-shrink:0;background:#fff;border-right:1px solid #EDE8E1;padding:12px 8px;display:flex;flex-direction:column;gap:1px}
+.mn{flex:1;padding:16px 20px;min-width:0}
+.sb-hd{font-size:9px;font-weight:700;color:#8B7E74;letter-spacing:.06em;padding:10px 8px 3px;text-transform:uppercase}
+.cb{width:100%;text-align:left;padding:6px 9px;border-radius:7px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#1C1511;font-family:inherit;display:flex;justify-content:space-between;align-items:center}
+.cb:hover{background:#F5F1EC}.cb.on{background:#FFF0EC;color:#C4472A}
+.cb.ing{color:#15803d}.cb.ing.on{background:#DCFCE7;color:#15803d}
+.fzrow{padding:5px 8px;font-size:10px;color:#8B7E74;display:flex;justify-content:space-between;align-items:center}
+.fzdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+.sb-acts{margin-top:auto;padding-top:10px;border-top:1px solid #EDE8E1;display:flex;flex-direction:column;gap:5px}
+.abt{width:100%;padding:7px 9px;font-size:12px;font-weight:700;border-radius:7px;border:none;cursor:pointer;font-family:inherit;text-align:left}
+.mob-top{display:none;flex-direction:column;gap:8px;margin-bottom:10px}
+.mob-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.mob-cats::-webkit-scrollbar{display:none}
+.mcat{padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;background:#EDE8E1;color:#8B7E74;flex-shrink:0}
+.mcat.on{background:#C4472A;color:#fff}
+.mcat.ing.on{background:#16a34a;color:#fff}
+.mob-acts{display:flex;gap:7px}
+.mabt{flex:1;padding:9px 6px;font-size:12px;font-weight:700;border-radius:9px;border:none;cursor:pointer;font-family:inherit;text-align:center}
+.srch-wrap{position:relative;margin-bottom:10px}
+.srch{width:100%;padding:11px 16px 11px 40px;border-radius:10px;border:2px solid #EDE8E1;font-size:15px;font-family:inherit;outline:none;background:#F5F1EC;transition:border-color .15s}
+.srch:focus{border-color:#C4472A;background:#fff}
+.sic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#8B7E74;pointer-events:none;font-size:15px}
+.meta{font-size:11px;color:#8B7E74;margin-bottom:10px}
+.pr{background:#fff;border:1px solid #EDE8E1;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:5px;transition:border-color .1s}
+.pr:hover{border-color:#C4472A88}
+.pr.ing{border-left:3px solid #16a34a}
+.pr.ns{opacity:.38}
+.pr-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px}
+.pname{font-size:13px;font-weight:700;line-height:1.3}
+.psub{font-size:10px;color:#8B7E74;margin-top:1px}
+.pills{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.bdg{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.pnote{font-size:10px;color:#8B7E74;margin-top:5px;padding:2px 8px;background:#F5F1EC;border-radius:5px;font-style:italic}
+.hr{background:#fff;border:1px solid #EDE8E1;border-radius:9px;padding:9px 12px;margin-bottom:5px}
+.hbdg{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center}
+.ov.show{display:flex}
+.md{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;padding:16px 16px 30px}
+.mhnd{width:30px;height:4px;background:#EDE8E1;border-radius:2px;margin:0 auto 13px}
+.mtitle{font-size:17px;font-weight:800;margin-bottom:13px}
+.lbl{font-size:10px;font-weight:700;color:#8B7E74;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.fi{width:100%;padding:8px 11px;border-radius:8px;border:1.5px solid #EDE8E1;font-size:13px;font-family:inherit;outline:none;background:#FAF8F4;margin-bottom:10px}
+.fi:focus{border-color:#C4472A}
+textarea.fi{resize:none}
+.fzgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:13px}
+.fzo{border-radius:9px;padding:10px 6px;border:2px solid #EDE8E1;background:#fff;font-weight:700;font-size:11px;cursor:pointer;font-family:inherit;text-align:center;color:#8B7E74;transition:all .1s}
+.qc{display:flex;align-items:center;gap:8px;margin-bottom:13px}
+.qbtn{width:40px;height:40px;border-radius:8px;border:none;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center}
+.qi{flex:1;text-align:center;padding:7px;border-radius:8px;border:1.5px solid #EDE8E1;font-size:20px;font-weight:800;font-family:inherit;outline:none}
+.pb{width:100%;padding:12px;border-radius:10px;background:#C4472A;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:3px}
+.pb:disabled{background:#ccc;cursor:not-allowed;opacity:.7}
+.sb2{width:100%;padding:10px;border-radius:10px;background:#F3EDE8;color:#8B7E74;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit;margin-top:6px}
+.dfz{border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.mini{width:30px;height:30px;border-radius:6px;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center}
+.srch-list{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto;margin-bottom:6px}
+.srow{padding:9px 12px;border-radius:9px;border:1.5px solid #EDE8E1;cursor:pointer;font-size:12px}
+.srow:hover,.srow.on{background:#FFF0EC;border-color:#C4472A}
+.imp-list{max-height:160px;overflow-y:auto;border:1px solid #EDE8E1;border-radius:7px;margin-bottom:12px}
+.imp-row{font-size:11px;padding:5px 10px;border-bottom:1px solid #EDE8E1}
+.warn{background:#FEF2F2;border-radius:9px;padding:11px 13px;color:#7F1D1D;font-size:12px;line-height:1.6;margin-bottom:14px}
+.sec-hd{font-size:10px;font-weight:700;color:#8B7E74;margin:12px 0 6px;padding-top:10px;border-top:1px solid #EDE8E1;letter-spacing:.04em;text-transform:uppercase}
+@media(max-width:640px){
+  .sb{display:none!important}
+  .mob-top{display:flex!important}
+  .mn{padding:10px 12px 16px}
+  .hdr{padding:10px 14px}
+  .pname{font-size:12px}
+  .pr{padding:9px 11px}
+}
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="hdr">
+    <div>
+      <div style="font-size:17px;font-weight:800">❄️ Freezer Stock</div>
+      <div style="font-size:10px;color:#8B7E74;margin-top:1px">Il-Kċina ta' Lucija</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="totval" style="background:#FFF0EC;color:#C4472A;font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px"></span>
+      <div style="display:flex;border:1px solid #EDE8E1;border-radius:8px;overflow:hidden">
+        <button id="tbstock" onclick="setTab('stock')" style="padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Stock</button>
+        <button id="tbhist" onclick="setTab('history')" style="padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">History</button>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="sb" id="sb"></div>
+    <div class="mn" id="mn"></div>
+  </div>
+  <div class="ov" id="ov"><div class="md" id="md"></div></div>
+</div>
+
+<script>
+const PI=[
+  {id:"706",name:"Imqaret Tradizzjonali x10 - FFRIŻATI",d:"4 pax",c:"Dessert",p:5},
+  {id:"906",name:"Ftajjar tal-Ġbejniet Friski Iffriżati - Pkt x4",d:"Pkt of 4",c:"Ftajjar",p:8.25},
+  {id:"904",name:"Ftajjar tal-Inċova Iffriżati - Pkt x4",d:"Pkt of 4",c:"Ftajjar",p:6.63},
+  {id:"903",name:"Ftajjar tat-Tonn taż-Żejt Iffriżati - Pkt x4",d:"Pkt of 4",c:"Ftajjar",p:6.63},
+  {id:"907",name:"Ftira tal-Ġbejniet Friski x1",d:"1 pax",c:"Ftajjar",p:8.25},
+  {id:"909",name:"Ftira tal-Inċova x1",d:"1 pax",c:"Ftajjar",p:6.63},
+  {id:"908",name:"Ftira tat-Tonn taż-Żejt x1",d:"1 pax",c:"Ftajjar",p:6.63},
+  {id:"254",name:"Lasagna x2",d:"2 pax",c:"Pasta",p:15},
+  {id:"253",name:"Lasagna x4",d:"4 pax",c:"Pasta",p:27.9},
+  {id:"251",name:"Lasagna x6",d:"6 pax",c:"Pasta",p:36.95},
+  {id:"203",name:"Mqarrun il-Forn x2",d:"2 pax",c:"Pasta",p:12.5},
+  {id:"201",name:"Mqarrun il-Forn x4",d:"4 pax",c:"Pasta",p:23.5},
+  {id:"202",name:"Mqarrun il-Forn x6",d:"6 pax",c:"Pasta",p:32.9},
+  {id:"256",name:"Timpana bl-Għaġina Taħt x4",d:"4 pax",c:"Pasta",p:26.95},
+  {id:"255",name:"Timpana x3",d:"2 pax",c:"Pasta",p:14.5},
+  {id:"252",name:"Timpana x4",d:"4 pax",c:"Pasta",p:26.9},
+  {id:"417",name:"Torta taċ-Chicken FFRIŻATA x2",d:"2 pax",c:"Torti",p:6.4},
+  {id:"402",name:"Torta taċ-Chicken x4",d:"4 pax",c:"Torti",p:18.95},
+  {id:"403",name:"Torta tal-Corned Beef x4",d:"4 pax",c:"Torti",p:18.45},
+  {id:"415",name:"Torta tal-Ġbejniet Friski FFRIŻATA x2",d:"2 pax",c:"Torti",p:6},
+  {id:"452",name:"Torta tal-Ġbejniet Friski x3",d:"2 pax",c:"Torti",p:12},
+  {id:"405",name:"Torta tal-Ġbejniet Friski x4",d:"4 pax",c:"Torti",p:18.95},
+  {id:"411",name:"Torta tal-Ikkapuljat FFRIŻATA x1",d:"1 pax",c:"Torti",p:2.35},
+  {id:"414",name:"Torta tal-Ikkapuljat FFRIŻATA x2",d:"2 pax",c:"Torti",p:6.4},
+  {id:"401",name:"Torta tal-Ikkapuljat x4",d:"4 pax",c:"Torti",p:18.95},
+  {id:"408",name:"Torta tal-Lampuki FFRIŻATA x1",d:"1 pax",c:"Torti",p:2.5},
+  {id:"412",name:"Torta tal-Lampuki FFRIŻATA x2",d:"2 pax",c:"Torti",p:6.95},
+  {id:"407",name:"Torta tal-Lampuki x3",d:"3 pax",c:"Torti",p:19.95},
+  {id:"406",name:"Torta tal-Lampuki x4",d:"4 pax",c:"Torti",p:25.95},
+  {id:"453",name:"Torta tal-Pastard x4",d:"4 pax",c:"Torti",p:14.5},
+  {id:"409",name:"Torta tal-Qargħa u r-Ross FFRIŻATA x1",d:"1 pax",c:"Torti",p:1.95},
+  {id:"413",name:"Torta tal-Qargħa u r-Ross FFRIŻATA x2",d:"2 pax",c:"Torti",p:5.4},
+  {id:"410",name:"Torta tal-Qargħa u r-Ross FFRIŻATA x3",d:"2 pax",c:"Torti",p:8.75},
+  {id:"404",name:"Torta tal-Qargħa u r-Ross x4",d:"4 pax",c:"Torti",p:18.45},
+  {id:"1001",name:"Brokkli",d:"",c:"Ħaxix",p:0},
+  {id:"1002",name:"Merqtux",d:"",c:"Ħaxix",p:0},
+  {id:"1003",name:"Pastard",d:"",c:"Ħaxix",p:0},
+  {id:"1004",name:"Piżelli",d:"",c:"Ħaxix",p:0},
+  {id:"1005",name:"Qargħa Ħamra",d:"",c:"Ħaxix",p:0},
+  {id:"1101",name:"Klamari",d:"",c:"Ħut",p:0},
+  {id:"1102",name:"Qarnit",d:"",c:"Ħut",p:0},
+  {id:"1103",name:"Salamun",d:"",c:"Ħut",p:0},
+  {id:"1201",name:"Ċanga - Fillet",d:"",c:"Laħam",p:0},
+  {id:"1202",name:"Fenek",d:"",c:"Laħam",p:0},
+  {id:"1203",name:"Ħaruf ta' Barra",d:"",c:"Laħam",p:0},
+  {id:"1204",name:"Ħaruf ta' Għawdex",d:"",c:"Laħam",p:0},
+  {id:"1205",name:"Ikkapuljat",d:"",c:"Laħam",p:0},
+  {id:"1206",name:"Majjal - Fillet",d:"",c:"Laħam",p:0},
+  {id:"1207",name:"Majjal - Spalla",d:"",c:"Laħam",p:0},
+  {id:"1208",name:"Tiġieġa - Koxox",d:"",c:"Laħam",p:0},
+  {id:"1209",name:"Tiġieġa - Sħieħa",d:"",c:"Laħam",p:0},
+  {id:"1210",name:"Vitella",d:"",c:"Laħam",p:0},
+];
+
+const FZ=[
+  {id:1,n:"Freezer 1",col:"#1A56DB",bg:"#E1EFFE",dk:"#1e429f"},
+  {id:2,n:"Freezer 2",col:"#0E9F6E",bg:"#DEF7EC",dk:"#03543f"},
+  {id:3,n:"Freezer 3",col:"#D97706",bg:"#FEF3C7",dk:"#92400e"},
+  {id:4,n:"Fridge",col:"#9333EA",bg:"#F3E8FF",dk:"#6b21a8"},
+];
+
+const CC={
+  Dessert:{bg:"#FCE7F3",tc:"#9D174D"},
+  Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},
+  Pasta:{bg:"#FEFCE8",tc:"#854D0E"},
+  Torti:{bg:"#FFFBEB",tc:"#78350F"},
+  "Ħaxix":{bg:"#DCFCE7",tc:"#166534"},
+  "Ħut":{bg:"#CFFAFE",tc:"#0E7490"},
+  "Laħam":{bg:"#FEE2E2",tc:"#991B1B"},
+};
+const ING=new Set(["Ħaxix","Ħut","Laħam"]);
+
+let prods=[...PI],stock={},notes={},hist=[];
+let uiSrch="",uiCat="All",uiTab="stock";
+let modal=null;
+
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+function load(){
+  const s=lsGet("lk_s");if(s)stock=s;
+  const p=lsGet("lk_p");if(p)prods=p;
+  const n=lsGet("lk_n");if(n)notes=n;
+  const h=lsGet("lk_h");if(h)hist=h;
+  draw();
+}
+function sv(){lsSet("lk_s",stock);lsSet("lk_p",prods);lsSet("lk_n",notes);lsSet("lk_h",hist);}
+
+const euro=n=>`€${Number(n).toFixed(2)}`;
+const fdate=ts=>new Date(ts).toLocaleDateString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const gq=(pid,fid)=>stock[pid]?.[fid]??0;
+const gt=pid=>Object.values(stock[pid]??{}).reduce((a,b)=>a+b,0);
+const dynCats=()=>[...new Set(prods.map(p=>p.c))];
+const totVal=()=>{let v=0;for(const[pid,f]of Object.entries(stock)){const pr=prods.find(x=>x.id===pid);if(pr?.p)v+=Object.values(f).reduce((a,b)=>a+b,0)*pr.p;}return v;};
+const fzInfo=fid=>({items:Object.entries(stock).filter(([,f])=>(f[fid]??0)>0).length});
+
+function addLog(type,pname,qty,from,to){hist.unshift({id:Date.now(),type,pname:pname||"",qty:qty||0,from:from||"",to:to||"",ts:Date.now()});hist=hist.slice(0,300);}
+
+function setQ(pid,fid,qty){
+  const old=gq(pid,fid);
+  if(!stock[pid])stock[pid]={};
+  if(qty<=0)delete stock[pid][fid];else stock[pid][fid]=qty;
+  if(!Object.keys(stock[pid]??{}).length)delete stock[pid];
+  const d=qty-old;if(d!==0){const pr=prods.find(p=>p.id===pid);addLog(d>0?'add':'remove',pr?.name,Math.abs(d),FZ.find(f=>f.id===fid)?.n,null);}
+  sv();draw();if(modal?.pid===pid)openDetail(pid);
+}
+function addS(pid,fid,qty){
+  if(!stock[pid])stock[pid]={};stock[pid][fid]=(stock[pid][fid]??0)+qty;
+  const pr=prods.find(p=>p.id===pid);addLog('add',pr?.name,qty,FZ.find(f=>f.id===fid)?.n,null);
+  sv();closeM();draw();
+}
+function doTx(pid,from,to,qty){
+  const av=gq(pid,from);const act=Math.min(qty,av);if(!act)return;
+  if(!stock[pid])stock[pid]={};
+  stock[pid][from]=(stock[pid][from]??0)-act;if(stock[pid][from]<=0)delete stock[pid][from];
+  stock[pid][to]=(stock[pid][to]??0)+act;
+  if(!Object.keys(stock[pid]??{}).length)delete stock[pid];
+  const pr=prods.find(p=>p.id===pid);addLog('transfer',pr?.name,act,FZ.find(f=>f.id===from)?.n,FZ.find(f=>f.id===to)?.n);
+  sv();closeM();draw();
+}
+function zeroP(pid){const pr=prods.find(p=>p.id===pid);addLog('purge',pr?.name,gt(pid),'all',null);delete stock[pid];sv();closeM();draw();}
+function purgeAll(){addLog('purge','All products',0,'all',null);stock={};sv();closeM();draw();}
+function setNote(pid,v){notes[pid]=v;sv();}
+function importP(arr){
+  const ids=new Set(prods.map(p=>p.id));const add=arr.filter(p=>!ids.has(p.id));
+  prods=[...prods,...add];if(add.length)addLog('import',add.length+' products',add.length,null,null);
+  sv();closeM();draw();
+}
+
+function setTab(t){uiTab=t;draw();}
+
+function draw(){
+  document.getElementById('totval').textContent=euro(totVal());
+  const ts=document.getElementById('tbstock'),th=document.getElementById('tbhist');
+  ts.style.cssText=`padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${uiTab==='stock'?'#C4472A':'#F5F1EC'};color:${uiTab==='stock'?'#fff':'#8B7E74'}`;
+  th.style.cssText=`padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${uiTab==='history'?'#C4472A':'#F5F1EC'};color:${uiTab==='history'?'#fff':'#8B7E74'}`;
+  drawSb();uiTab==='stock'?drawMain():drawHist();
+}
+
+function drawSb(){
+  const cs=dynCats();
+  let h=`<div class="sb-hd">Categories</div>`;
+  h+=`<button class="cb${uiCat==='All'?' on':''}" onclick="uiCat='All';drawMain()"><span>All</span><span style="font-size:10px;color:#8B7E74">${prods.length}</span></button>`;
+  for(const c of cs){
+    const ing=ING.has(c),n=prods.filter(p=>p.c===c).length;
+    h+=`<button class="cb${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=${JSON.stringify(c)};drawMain()"><span>${c}</span><span style="font-size:10px;color:#8B7E74">${n}</span></button>`;
+  }
+  h+=`<div class="sb-hd" style="margin-top:4px">Storage</div>`;
+  for(const f of FZ){
+    const i=fzInfo(f.id);
+    h+=`<div class="fzrow"><span><span class="fzdot" style="background:${f.col}"></span>${f.n}</span><span>${i.items} items</span></div>`;
+  }
+  h+=`<div class="sb-acts">`;
+  h+=`<button class="abt" style="background:#C4472A;color:#fff" onclick="openAdd()">+ Add Stock</button>`;
+  h+=`<button class="abt" style="background:#EDE8E1;color:#8B7E74" onclick="openImport()">Import CSV</button>`;
+  h+=`<button class="abt" style="background:#FEF2F2;color:#991B1B" onclick="openPurge()">Reset All</button>`;
+  h+=`</div>`;
+  document.getElementById('sb').innerHTML=h;
+}
+
+function drawMain(){
+  const s=uiSrch.toLowerCase().trim();const cs=dynCats();
+  let filtered=prods.filter(p=>{
+    if(uiCat!=='All'&&p.c!==uiCat)return false;
+    if(s&&!p.name.toLowerCase().includes(s)&&!p.id.includes(s))return false;
+    return true;
+  });
+  const inStock=filtered.filter(p=>gt(p.id)>0);
+  const noStock=filtered.filter(p=>gt(p.id)===0);
+  let h=`<div class="mob-top"><div class="mob-cats"><button class="mcat${uiCat==='All'?' on':''}" onclick="uiCat='All';drawMain()">All</button>`;
+  for(const c of cs){const ing=ING.has(c);h+=`<button class="mcat${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=${JSON.stringify(c)};drawMain()">${c}</button>`;}
+  h+=`</div><div class="mob-acts"><button class="mabt" style="background:#C4472A;color:#fff" onclick="openAdd()">+ Add Stock</button><button class="mabt" style="background:#EDE8E1;color:#8B7E74" onclick="openImport()">Import</button><button class="mabt" style="background:#FEF2F2;color:#991B1B" onclick="openPurge()">Reset</button></div></div>`;
+  h+=`<div class="srch-wrap"><span class="sic">🔍</span><input class="srch" id="si" placeholder="Search for a product..." value="${uiSrch.replace(/"/g,'&quot;')}" oninput="uiSrch=this.value;drawMain()"></div>`;
+  if(s||uiCat!=='All'){h+=`<div class="meta">${filtered.length} results · <strong>${inStock.length} in stock</strong></div>`;}
+  else{h+=`<div class="meta"><strong>${inStock.length} items in stock</strong> · ${prods.length} total products</div>`;}
+  if(inStock.length===0&&!s&&uiCat==='All'){h+=`<div style="text-align:center;padding:60px 20px;color:#8B7E74"><div style="font-size:40px;margin-bottom:10px">🧊</div><div style="font-weight:700;font-size:15px">No stock yet</div><div style="font-size:12px;margin-top:4px">Use "+ Add Stock" to get started</div></div>`;}
+  for(const p of inStock)h+=prow(p,false);
+  if((s||uiCat!=='All')&&noStock.length){h+=`<div class="sec-hd">Not in stock (${noStock.length})</div>`;for(const p of noStock)h+=prow(p,true);}
+  if(filtered.length===0&&(s||uiCat!=='All')){h+=`<div style="text-align:center;padding:40px 20px;color:#8B7E74"><div style="font-weight:700">No products found</div></div>`;}
+  document.getElementById('mn').innerHTML=h;
+  const si=document.getElementById('si');if(si&&document.activeElement!==si){si.focus();si.setSelectionRange(si.value.length,si.value.length);}
+}
+
+function prow(p,ns){
+  const cc=CC[p.c]||{bg:'#F3F4F6',tc:'#374151'};
+  const ing=ING.has(p.c),tot=gt(p.id),nt=notes[p.id];
+  let h=`<div class="pr${ing?' ing':''}${ns?' ns':''}" onclick="openDetail('${p.id}')">`;
+  h+=`<div class="pr-top"><div><div class="pname">${p.name}</div>`;
+  if(p.d||p.p>0)h+=`<div class="psub">${p.d}${p.p>0?` · ${euro(p.p)}/unit`:''}</div>`;
+  h+=`</div><div style="display:flex;gap:5px;align-items:center;flex-shrink:0"><span class="bdg" style="background:${cc.bg};color:${cc.tc}">${p.c}</span>`;
+  if(tot>0)h+=`<span style="font-size:11px;font-weight:800;white-space:nowrap">${tot} total</span>`;
+  h+=`</div></div>`;
+  if(!ns&&tot>0){h+=`<div class="pills">`;for(const f of FZ){const q=gq(p.id,f.id);if(q>0)h+=`<span class="pill" style="background:${f.bg};color:${f.dk}">${f.n}: ${q}</span>`;}h+=`</div>`;}
+  else if(ns){h+=`<div style="font-size:11px;color:#8B7E74;font-style:italic">Not in stock — click to add</div>`;}
+  if(nt)h+=`<div class="pnote">${nt}</div>`;
+  h+=`</div>`;return h;
+}
+
+function drawHist(){
+  const LS={add:{bg:"#DEF7EC",tc:"#03543f",lb:"Added"},remove:{bg:"#FEE2E2",tc:"#991B1B",lb:"Removed"},transfer:{bg:"#E1EFFE",tc:"#1e429f",lb:"Transferred"},purge:{bg:"#FEF3C7",tc:"#92400E",lb:"Purged"},import:{bg:"#F3E8FF",tc:"#6b21a8",lb:"Imported"}};
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-size:12px;font-weight:700;color:#8B7E74">${hist.length} events</span>`;
+  if(hist.length)h+=`<button onclick="if(confirm('Clear history?')){hist=[];sv();draw();}" style="font-size:11px;color:#991B1B;background:#FEF2F2;padding:4px 9px;border-radius:7px;border:none;cursor:pointer;font-family:inherit">Clear</button>`;
+  h+=`</div>`;
+  if(!hist.length){h+=`<div style="text-align:center;padding:60px 20px;color:#8B7E74"><div style="font-size:32px;margin-bottom:8px">📋</div><div style="font-weight:700">No activity yet</div></div>`;}
+  for(const e of hist){
+    const ls=LS[e.type]||{bg:'#F3F4F6',tc:'#374151',lb:e.type};
+    h+=`<div class="hr"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="display:flex;gap:5px;align-items:center;margin-bottom:3px"><span class="hbdg" style="background:${ls.bg};color:${ls.tc}">${ls.lb}</span>`;
+    if(e.qty>0)h+=`<span style="font-size:11px;font-weight:700">${e.qty} unit${e.qty!==1?'s':''}</span>`;
+    h+=`</div><div style="font-size:12px;font-weight:700">${e.pname}</div>`;
+    if(e.type==='transfer')h+=`<div style="font-size:10px;color:#8B7E74;margin-top:2px">${e.from} → ${e.to}</div>`;
+    else if(e.from)h+=`<div style="font-size:10px;color:#8B7E74;margin-top:2px">${e.from}</div>`;
+    h+=`</div><div style="font-size:10px;color:#8B7E74;white-space:nowrap;flex-shrink:0">${fdate(e.ts)}</div></div></div>`;
+  }
+  document.getElementById('mn').innerHTML=h;
+}
+
+function showM(html){document.getElementById('md').innerHTML=html;document.getElementById('ov').classList.add('show');}
+function closeM(){modal=null;document.getElementById('ov').classList.remove('show');}
+document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
+
+function openDetail(pid){
+  modal={type:'detail',pid};
+  const p=prods.find(x=>x.id===pid);if(!p)return;
+  const tot=gt(pid),cc=CC[p.c]||{bg:'#F3F4F6',tc:'#374151'};
+  let h=`<div class="mhnd"></div><div class="mtitle">${p.name}</div>`;
+  h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:#8B7E74">`;
+  if(p.d)h+=`<span>${p.d}</span>`;
+  h+=`<span class="bdg" style="background:${cc.bg};color:${cc.tc}">${p.c}</span>`;
+  if(p.p>0)h+=`<span style="color:#C4472A;font-weight:700">${euro(p.p)}/unit</span>`;
+  h+=`</div>`;
+  if(tot>0){h+=`<div style="display:flex;gap:8px;margin-bottom:13px"><span style="background:#F3EDE8;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700">${tot} units total</span>`;if(p.p>0)h+=`<span style="background:#FFF0EC;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#C4472A">${euro(tot*p.p)}</span>`;h+=`</div>`;}
+  for(const f of FZ){
+    const q=gq(pid,f.id),has=q>0;
+    h+=`<div class="dfz" style="background:${has?f.bg:'#F9F6F2'};border:1.5px solid ${has?f.col:'#EDE8E1'}">`;
+    h+=`<div><div style="font-size:12px;font-weight:700;color:${has?f.dk:'#8B7E74'}">${f.n}</div>`;
+    h+=`<div style="font-size:10px;color:${has?f.col:'#8B7E74'}">${has?`${q} unit${q!==1?'s':''}${p.p>0?` · ${euro(q*p.p)}`:''}` :'Empty'}</div></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:5px">`;
+    if(has)h+=`<button onclick="openTx('${pid}',${f.id})" style="padding:3px 9px;font-size:10px;font-weight:700;border-radius:6px;background:transparent;border:1.5px solid ${f.col};color:${f.dk};cursor:pointer;font-family:inherit;white-space:nowrap">Transfer</button>`;
+    h+=`<button class="mini" style="background:#F3EDE8;color:#1C1511" onclick="setQ('${pid}',${f.id},${q-1})">−</button>`;
+    h+=`<span style="font-size:16px;font-weight:800;color:${has?f.col:'#8B7E74'};min-width:26px;text-align:center">${q}</span>`;
+    h+=`<button class="mini" style="background:${f.col};color:#fff" onclick="setQ('${pid}',${f.id},${q+1})">+</button>`;
+    h+=`</div></div>`;
+  }
+  h+=`<label class="lbl" style="margin-top:4px">Notes</label>`;
+  h+=`<textarea class="fi" rows="2" placeholder="e.g. Batch 28 March · Use by 15 April" onblur="setNote('${pid}',this.value)">${notes[pid]||''}</textarea>`;
+  if(tot>0)h+=`<button onclick="if(confirm('Zero all stock for this item?')){zeroP('${pid}')}" style="width:100%;padding:8px;border-radius:8px;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-bottom:4px">Zero this product</button>`;
+  h+=`<button class="sb2" onclick="closeM();draw()">Done</button>`;
+  showM(h);
+}
+
+function openAdd(){
+  modal={type:'add',step:1,pid:null,fid:null,qty:1,srch:''};renderAdd();
+}
+function renderAdd(){
+  const m=modal;
+  let h=`<div class="mhnd"></div><div class="mtitle">Add to Stock</div>`;
+  if(m.step===1){
+    const list=prods.filter(p=>!m.srch||p.name.toLowerCase().includes(m.srch.toLowerCase())).slice(0,50);
+    h+=`<input class="fi" id="asrch" placeholder="Search product..." value="${m.srch}" oninput="modal.srch=this.value;renderAdd()">`;
+    h+=`<div class="srch-list">`;
+    for(const p of list){
+      const cc=CC[p.c]||{bg:'#F3F4F6',tc:'#374151'};
+      h+=`<div class="srow${m.pid===p.id?' on':''}" onclick="modal.pid='${p.id}';modal.step=2;renderAdd()"><span style="font-weight:700">${p.name}</span> <span class="bdg" style="background:${cc.bg};color:${cc.tc};margin-left:4px">${p.c}</span>${p.p>0?` <span style="font-size:10px;color:#8B7E74;margin-left:4px">${euro(p.p)}</span>`:''}</div>`;
+    }
+    h+=`</div>`;
+  }else{
+    const p=prods.find(x=>x.id===m.pid);
+    h+=`<div style="padding:9px 12px;border-radius:9px;background:#FFF0EC;margin-bottom:14px"><div style="font-size:13px;font-weight:700;color:#C4472A">${p?.name}</div><div style="font-size:10px;color:#8B7E74;margin-top:2px">${p?.d}${p?.p>0?` · ${euro(p.p)}`:''}</div></div>`;
+    h+=`<label class="lbl">Storage unit</label><div class="fzgrid">`;
+    for(const f of FZ){
+      const sel=m.fid===f.id;
+      h+=`<button class="fzo" style="${sel?`border-color:${f.col};background:${f.bg};color:${f.dk}`:''}" onclick="modal.fid=${f.id};renderAdd()">${f.n}<br><span style="font-size:10px;opacity:.7">has ${gq(m.pid,f.id)}</span></button>`;
+    }
+    h+=`</div><label class="lbl">Quantity</label>`;
+    h+=`<div class="qc"><button class="qbtn" style="background:#F3EDE8;color:#1C1511" onclick="if(modal.qty>1){modal.qty--;renderAdd()}">−</button><input class="qi" type="number" value="${m.qty}" min="1" onchange="modal.qty=Math.max(1,parseInt(this.value)||1);renderAdd()"><button class="qbtn" style="background:#C4472A;color:#fff" onclick="modal.qty++;renderAdd()">+</button></div>`;
+    h+=`<button class="pb" ${!m.fid?'disabled':''} onclick="addS('${m.pid||''}',modal.fid,modal.qty)">Add to Stock</button>`;
+    h+=`<button class="sb2" onclick="modal.step=1;renderAdd()">← Change Product</button>`;
+  }
+  showM(h);const asi=document.getElementById('asrch');if(asi)asi.focus();
+}
+
+function openTx(pid,fromFid){modal={type:'tx',pid,fromFid,toFid:null,qty:1};renderTx();}
+function renderTx(){
+  const m=modal,p=prods.find(x=>x.id===m.pid);
+  const fz=FZ.find(f=>f.id===m.fromFid),avail=gq(m.pid,m.fromFid);
+  let h=`<div class="mhnd"></div><div class="mtitle">Transfer Stock</div>`;
+  h+=`<div style="font-size:12px;color:#8B7E74;margin-bottom:12px">${p?.name}</div>`;
+  h+=`<div style="background:${fz?.bg};border-radius:9px;padding:9px 12px;margin-bottom:13px"><div style="font-size:10px;font-weight:700;color:${fz?.dk}">FROM: ${fz?.n}</div><div style="font-size:11px;color:${fz?.col};margin-top:1px">${avail} available</div></div>`;
+  h+=`<label class="lbl">To</label><div class="fzgrid" style="grid-template-columns:1fr 1fr 1fr">`;
+  for(const f of FZ.filter(f=>f.id!==m.fromFid)){const sel=m.toFid===f.id;h+=`<button class="fzo" style="${sel?`border-color:${f.col};background:${f.bg};color:${f.dk}`:''}" onclick="modal.toFid=${f.id};renderTx()">${f.n}</button>`;}
+  h+=`</div><label class="lbl">Quantity</label>`;
+  h+=`<div class="qc"><button class="qbtn" style="background:#F3EDE8;color:#1C1511" onclick="if(modal.qty>1){modal.qty--;renderTx()}">−</button><input class="qi" type="number" value="${m.qty}" min="1" max="${avail}" onchange="modal.qty=Math.min(${avail},Math.max(1,parseInt(this.value)||1));renderTx()"><button class="qbtn" style="background:#C4472A;color:#fff" onclick="if(modal.qty<${avail}){modal.qty++;renderTx()}">+</button></div>`;
+  h+=`<button class="pb" ${!m.toFid?'disabled':''} onclick="doTx('${m.pid}',${m.fromFid},modal.toFid,modal.qty)">Transfer</button>`;
+  h+=`<button class="sb2" onclick="closeM();openDetail('${m.pid}')">Cancel</button>`;
+  showM(h);
+}
+
+function openImport(){
+  let h=`<div class="mhnd"></div><div class="mtitle">Import Products (CSV)</div>`;
+  h+=`<div style="background:#F5F1EC;border-radius:9px;padding:10px 12px;font-size:11px;color:#8B7E74;margin-bottom:12px;line-height:1.7">Expected columns: <strong style="color:#1C1511">ID, NAME, DESCRIPTION, CATEGORY, Price</strong><br>Duplicate IDs are skipped automatically.</div>`;
+  h+=`<button onclick="document.getElementById('csvf').click()" style="width:100%;padding:12px;border-radius:10px;border:2px dashed #EDE8E1;background:#fff;color:#8B7E74;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">Choose CSV File</button>`;
+  h+=`<input type="file" id="csvf" accept=".csv" style="display:none" onchange="handleCSV(this)"><div id="imprev"></div><button class="sb2" onclick="closeM()">Cancel</button>`;
+  showM(h);
+}
+function handleCSV(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const lines=ev.target.result.trim().split(/\r?\n/),res=[];
+    for(let i=1;i<lines.length;i++){
+      const cols=[];let cur='',q=false;
+      for(const ch of lines[i]){if(ch==='"')q=!q;else if(ch===','&&!q){cols.push(cur.trim());cur='';}else cur+=ch;}
+      cols.push(cur.trim());
+      if(cols.length>=2&&cols[1])res.push({id:cols[0]||'i'+i,name:cols[1],d:cols[2]||'',c:cols[3]||'Other',p:parseFloat(cols[4])||0});
+    }
+    if(!res.length){document.getElementById('imprev').innerHTML=`<div style="color:#991B1B;font-size:12px;padding:8px;background:#FEF2F2;border-radius:7px">No valid rows found.</div>`;return;}
+    let h=`<div style="font-size:11px;font-weight:700;color:#8B7E74;margin-bottom:6px">${res.length} products found</div><div class="imp-list">`;
+    for(const p of res.slice(0,12))h+=`<div class="imp-row"><strong>${p.name}</strong> <span style="color:#8B7E74">· ${p.c}${p.p>0?` · ${euro(p.p)}`:''}</span></div>`;
+    if(res.length>12)h+=`<div style="font-size:10px;color:#8B7E74;padding:5px 10px">...and ${res.length-12} more</div>`;
+    h+=`</div><button class="pb" onclick='importP(${JSON.stringify(res)})'>Import ${res.length} Products</button>`;
+    document.getElementById('imprev').innerHTML=h;
+  };r.readAsText(f);
+}
+
+function openPurge(){
+  let h=`<div class="mhnd"></div><div class="mtitle">Reset All Stock</div>`;
+  h+=`<div class="warn">This will zero all quantities across all storage units. The product catalogue is not affected and this cannot be undone.</div>`;
+  h+=`<label style="display:flex;align-items:center;gap:10px;margin-bottom:16px;cursor:pointer"><input type="checkbox" id="pconf" style="width:16px;height:16px"><span style="font-size:13px;font-weight:600">I understand — reset all quantities to zero</span></label>`;
+  h+=`<button class="pb" id="pbtn" style="background:#991B1B" disabled onclick="purgeAll()">Reset All Stock</button><button class="sb2" onclick="closeM()">Cancel</button>`;
+  showM(h);document.getElementById('pconf').onchange=function(){document.getElementById('pbtn').disabled=!this.checked;};
+}
+
+load();
+</script>
+</body>
+</html>
