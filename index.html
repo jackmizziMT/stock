@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stock — Il-Kċina ta' Lucija</title>
+<title>Kċina ta' Luċija — Stock Manager</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#1C1511;background:#F8F5F0;min-height:100vh}
@@ -33,9 +33,11 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#1C1511
 .mabt{flex:1;padding:9px 6px;font-size:12px;font-weight:700;border-radius:9px;border:none;cursor:pointer;font-family:inherit;text-align:center}
 .fz-banner{border-radius:9px;padding:8px 13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700}
 .srch-wrap{position:relative;margin-bottom:10px}
-.srch{width:100%;padding:11px 16px 11px 40px;border-radius:10px;border:2px solid #EDE8E1;font-size:15px;font-family:inherit;outline:none;background:#F5F1EC;transition:border-color .15s}
+.srch{width:100%;padding:11px 36px 11px 40px;border-radius:10px;border:2px solid #EDE8E1;font-size:15px;font-family:inherit;outline:none;background:#F5F1EC;transition:border-color .15s}
 .srch:focus{border-color:#C4472A;background:#fff}
 .sic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#8B7E74;pointer-events:none;font-size:15px}
+.sclr{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;border:none;background:#C4B5A8;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.sclr:hover{background:#8B7E74}
 .meta{font-size:11px;color:#8B7E74;margin-bottom:10px}
 .pr{background:#fff;border:1px solid #EDE8E1;border-left:3px solid transparent;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:5px;transition:border-color .1s}
 .pr:hover{border-color:#C4472A44;border-left-color:transparent}
@@ -98,8 +100,8 @@ textarea.fi{resize:none}
 <div id="root">
   <div class="hdr">
     <div>
-      <div style="font-size:17px;font-weight:800">❄️ Freezer Stock</div>
-      <div style="font-size:10px;color:#8B7E74;margin-top:1px">Il-Kċina ta' Lucija</div>
+      <div style="font-size:16px;font-weight:800">Kċina ta' Luċija</div>
+      <div style="font-size:10px;color:#8B7E74;margin-top:1px">Stock Manager</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span id="totval" style="background:#FFF0EC;color:#C4472A;font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px"></span>
@@ -178,14 +180,13 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.0 · April 2026";
-
+const VER="v2.1 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
-
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
 function load(){
   const s=lsGet("lk_s");if(s)stock=s;
   const p=lsGet("lk_p");if(p)prods=p;
@@ -288,6 +289,7 @@ function drawSb(){
 function showLowStock(){uiCat='All';uiFz=null;uiSrch='';drawMain();setTimeout(()=>{const mn=document.getElementById('mn');if(mn)mn.scrollTop=0;},50);}
 
 function drawMain(){
+  document.getElementById('totval').textContent=euro(totVal());
   const s=uiSrch.toLowerCase().trim(),cs=dynCats();
   let inStock,noStock;
   if(uiFz){
@@ -302,7 +304,7 @@ function drawMain(){
   for(const c of cs){const ing=ING.has(c);h+=`<button class="mcat${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=${JSON.stringify(c)};uiFz=null;drawMain()">${c}</button>`;}
   h+=`</div><div class="mob-acts"><button class="mabt" style="background:#C4472A;color:#fff" onclick="openAdd()">+ Add Stock</button><button class="mabt" style="background:#EDE8E1;color:#1C1511" onclick="exportCSV()">Export</button><button class="mabt" style="background:#FEF2F2;color:#991B1B" onclick="openPurge()">Reset</button></div></div>`;
   if(uiFz){const f=FZ.find(x=>x.id===uiFz);h+=`<div class="fz-banner" style="background:${f.bg};border:1px solid ${f.col}33"><span style="color:${f.dk}"><span class="fzdot" style="background:${f.col}"></span>${f.n} — ${inStock.length} item${inStock.length!==1?'s':''}</span><button onclick="uiFz=null;drawMain()" style="background:none;border:none;cursor:pointer;font-size:16px;color:${f.dk};font-weight:700;line-height:1">×</button></div>`;}
-  h+=`<div class="srch-wrap"><span class="sic">🔍</span><input class="srch" id="si" placeholder="Search for a product..." value="${uiSrch.replace(/"/g,'&quot;')}" oninput="uiSrch=this.value;drawMain()"></div>`;
+  h+=`<div class="srch-wrap"><span class="sic">🔍</span><input class="srch" id="si" placeholder="Search for a product..." value="${uiSrch.replace(/"/g,'&quot;')}" oninput="uiSrch=this.value;drawMain()">${uiSrch?`<button class="sclr" onclick="uiSrch='';drawMain()" title="Clear search">×</button>`:''}</div>`;
   if(uiFz){h+=`<div class="meta"><strong>${inStock.length} items</strong> in ${FZ.find(x=>x.id===uiFz)?.n}</div>`;}
   else if(s||uiCat!=='All'){h+=`<div class="meta">${inStock.length+noStock.length} results · <strong>${inStock.length} in stock</strong></div>`;}
   else{h+=`<div class="meta"><strong>${inStock.length} items in stock</strong> · ${prods.length} total products</div>`;}
@@ -363,7 +365,7 @@ function openDetail(pid){
   modal={type:'detail',pid};
   const p=prods.find(x=>x.id===pid);if(!p)return;
   const tot=gt(pid),cc=CC[p.c]||{bg:'#F3F4F6',tc:'#374151'};
-  let h=`<div class="mhnd"></div><div class="mtitle">${p.name}</div>`;
+  let h=`<div class="mhnd"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px"><div class="mtitle" style="margin-bottom:0;flex:1;padding-right:8px">${p.name}</div>${tot>0?`<button onclick="if(confirm('Remove all stock for ${p.name.replace(/'/g,"\\'")}?')){zeroP('${pid}')}" title="Zero all stock for this product" style="flex-shrink:0;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px;color:#991B1B;line-height:1" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">🗑</button>`:''}</div>`;
   h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:#8B7E74">`;
   if(p.d)h+=`<span>${p.d}</span>`;
   h+=`<span class="bdg" style="background:${cc.bg};color:${cc.tc}">${p.c}</span>`;
@@ -387,7 +389,6 @@ function openDetail(pid){
   h+=`<div><label class="lbl">Low stock alert (units)</label><input class="fi" style="margin-bottom:0" type="number" min="0" placeholder="0 = off" value="${thresholds[pid]||''}" onchange="setThreshold('${pid}',this.value)"></div>`;
   h+=`</div>`;
   h+=`<button class="sb2" onclick="closeM();draw()">Done</button>`;
-  if(tot>0)h+=`<div style="text-align:center;margin-top:8px"><button onclick="if(confirm('Zero all stock for this item?')){zeroP('${pid}')}" style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:11px;color:#C4B5A8;text-decoration:underline">zero all stock for this product</button></div>`;
   showM(h);
 }
 
