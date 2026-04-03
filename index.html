@@ -386,8 +386,8 @@ function openDetail(pid){
   h+=`<div><label class="lbl">Notes</label><textarea class="fi" style="margin-bottom:0" rows="2" placeholder="e.g. Batch 28 Mar" onblur="setNote('${pid}',this.value)">${notes[pid]||''}</textarea></div>`;
   h+=`<div><label class="lbl">Low stock alert (units)</label><input class="fi" style="margin-bottom:0" type="number" min="0" placeholder="0 = off" value="${thresholds[pid]||''}" onchange="setThreshold('${pid}',this.value)"></div>`;
   h+=`</div>`;
-  if(tot>0)h+=`<button onclick="if(confirm('Zero all stock for this item?')){zeroP('${pid}')}" style="width:100%;padding:8px;border-radius:8px;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-bottom:4px">Zero this product</button>`;
   h+=`<button class="sb2" onclick="closeM();draw()">Done</button>`;
+  if(tot>0)h+=`<div style="text-align:center;margin-top:8px"><button onclick="if(confirm('Zero all stock for this item?')){zeroP('${pid}')}" style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:11px;color:#C4B5A8;text-decoration:underline">zero all stock for this product</button></div>`;
   showM(h);
 }
 
@@ -424,24 +424,48 @@ function renderAdd(){
 function openAddProd(name){
   modal={type:'addprod',name:name||'',desc:'',cat:dynCats()[0]||'Other',price:''};renderAddProd();
 }
+function selectAPCat(c){
+  modal.cat=c;
+  document.querySelectorAll('.ap-cat').forEach(b=>{
+    const bc=b.getAttribute('data-c');
+    const ing=ING.has(bc);
+    const on=bc===c;
+    b.className='tag ap-cat'+(on?' on':'');
+    if(ing){b.style.borderColor=on?'#16a34a':'#EDE8E1';b.style.background=on?'#DCFCE7':'';b.style.color=on?'#166534':'';}
+  });
+}
+function submitAddProd(){
+  const nm=document.getElementById('ap-n').value.trim();
+  if(!nm){document.getElementById('ap-n').focus();return;}
+  const newP={id:'c_'+Date.now(),name:nm,d:document.getElementById('ap-d').value.trim()||'',c:modal.cat,p:parseFloat(document.getElementById('ap-p').value)||0};
+  prods=[...prods,newP];sv();
+  modal={type:'add',step:2,pid:newP.id,fid:null,qty:1,srch:''};renderAdd();
+}
 function renderAddProd(){
   const m=modal;const cats=dynCats();
   let h=`<div class="mhnd"></div><div class="mtitle">Add New Product</div>`;
-  h+=`<label class="lbl">Name</label><input class="fi" id="ap-n" value="${m.name.replace(/"/g,'&quot;')}" oninput="modal.name=this.value" placeholder="Product name">`;
-  h+=`<label class="lbl">Description</label><input class="fi" id="ap-d" value="${m.desc.replace(/"/g,'&quot;')}" oninput="modal.desc=this.value" placeholder="e.g. 4 pax">`;
-  h+=`<label class="lbl">Price (€)</label><input class="fi" id="ap-p" type="number" value="${m.price}" oninput="modal.price=this.value" placeholder="0.00">`;
+  h+=`<label class="lbl">Name</label><input class="fi" id="ap-n" value="" placeholder="Product name">`;
+  h+=`<label class="lbl">Description</label><input class="fi" id="ap-d" value="" placeholder="e.g. 4 pax">`;
+  h+=`<label class="lbl">Price (€)</label><input class="fi" id="ap-p" type="number" value="" placeholder="0.00">`;
   h+=`<label class="lbl">Category</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">`;
-  for(const c of cats){const ing=ING.has(c);h+=`<button class="tag${m.cat===c?' on':''}" onclick="modal.cat=${JSON.stringify(c)};renderAddProd()" style="${ing?'border-color:#16a34a;'+(m.cat===c?'background:#DCFCE7;color:#166534':''):''}'">${c}</button>`;}
+  for(const c of cats){
+    const ing=ING.has(c);const on=m.cat===c;
+    h+=`<button class="tag ap-cat${on?' on':''}" data-c="${c}" onclick="selectAPCat('${c}')" style="${ing?(on?'border-color:#16a34a;background:#DCFCE7;color:#166534':'border-color:#16a34a'):''}'">${c}</button>`;
+  }
   h+=`</div>`;
-  h+=`<button class="pb" onclick="
-    const nm=document.getElementById('ap-n').value.trim();
-    if(!nm)return;
-    const newP={id:'c_'+Date.now(),name:nm,d:document.getElementById('ap-d').value.trim()||'',c:modal.cat,p:parseFloat(document.getElementById('ap-p').value)||0};
-    prods=[...prods,newP];sv();
-    modal={type:'add',step:2,pid:newP.id,fid:null,qty:1,srch:''};renderAdd();
-  ">Add Product & Continue</button>`;
-  h+=`<button class="sb2" onclick="modal={type:'add',step:1,pid:null,fid:null,qty:1,srch:modal.name||''};renderAdd()">← Back to Search</button>`;
-  showM(h);setTimeout(()=>{const n=document.getElementById('ap-n');if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},50);
+  h+=`<button class="pb" onclick="submitAddProd()">Add Product & Continue</button>`;
+  h+=`<button class="sb2" onclick="modal={type:'add',step:1,pid:null,fid:null,qty:1,srch:''};renderAdd()">← Back to Search</button>`;
+  showM(h);
+  setTimeout(()=>{
+    const n=document.getElementById('ap-n');
+    if(n){
+      n.value=m.name||'';
+      n.focus();
+      n.setSelectionRange(n.value.length,n.value.length);
+    }
+    const d=document.getElementById('ap-d');if(d)d.value=m.desc||'';
+    const p=document.getElementById('ap-p');if(p)p.value=m.price||'';
+  },30);
 }
 
 function openTx(pid,fromFid){modal={type:'tx',pid,fromFid,toFid:null,qty:1};renderTx();}
