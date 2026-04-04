@@ -180,7 +180,7 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.4 · April 2026";
+const VER="v2.5 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
@@ -242,7 +242,7 @@ function load(){
   draw();
   loadFromCloud().then(()=>draw());
 }
-function sv(){lsSet("lk_s",stock);lsSet("lk_p",prods);lsSet("lk_n",notes);lsSet("lk_h",hist);lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);}
+function sv(){lsSet("lk_s",stock);lsSet("lk_p",prods);lsSet("lk_n",notes);lsSet("lk_h",hist);lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);syncToCloud();}
 
 const euro=n=>`€${Number(n).toFixed(2)}`;
 const fdate=ts=>new Date(ts).toLocaleDateString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
