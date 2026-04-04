@@ -48,9 +48,13 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#1C1511
 .pname{font-size:13px;font-weight:700;line-height:1.3}
 .psub{font-size:10px;color:#8B7E74;margin-top:1px}
 .pills{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
-.pill{font-size:10px;font-weight:700;padding:3px 8px 3px 8px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;line-height:1}
-.prm{width:15px;height:15px;border-radius:50%;border:none;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;font-family:inherit;font-weight:700;background:rgba(0,0,0,.13);line-height:1}
-.prm:hover{background:rgba(0,0,0,.25)}
+.pill{font-size:11px;font-weight:700;padding:6px 12px 6px 12px;border-radius:12px;white-space:nowrap;display:inline-flex;align-items:center;gap:10px;line-height:1}
+.pill-info{display:flex;flex-direction:column;gap:2px}
+.pill-name{font-size:10px;font-weight:600;opacity:0.7;line-height:1}
+.pill-qty{font-size:22px;font-weight:800;line-height:1}
+.pill-sep{opacity:0.4;font-weight:400}
+.prm{width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;font-family:inherit;font-weight:800;background:rgba(0,0,0,.15);line-height:1}
+.prm:hover{background:rgba(0,0,0,.28)}
 .bdg{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .low-bdg{background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
 .pnote{font-size:10px;color:#8B7E74;margin-top:5px;padding:3px 8px;background:#F5F1EC;border-radius:5px;font-style:italic}
@@ -101,7 +105,7 @@ textarea.fi{resize:none}
   <div class="hdr">
     <div>
       <div style="font-size:16px;font-weight:800">Kċina ta' Luċija</div>
-      <div style="font-size:10px;color:#8B7E74;margin-top:1px">Stock Manager · <span id="syncst">loading...</span></div>
+      <div style="font-size:10px;color:#8B7E74;margin-top:1px;display:flex;align-items:center;gap:6px">Stock Manager · <span id="syncst">loading...</span><button onclick="manualSync()" title="Sync now" style="background:none;border:none;cursor:pointer;padding:0;font-size:13px;line-height:1;color:#8B7E74" id="syncbtn">⟳</button></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span id="totval" style="background:#FFF0EC;color:#C4472A;font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px"></span>
@@ -180,7 +184,7 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.5 · April 2026";
+const VER="v2.7 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
@@ -237,6 +241,10 @@ async function loadFromCloud(){
   }
 }
 
+function manualSync(){
+  cloudLoaded=false;
+  loadFromCloud().then(()=>draw());
+}
 function load(){
   const p=lsGet("lk_p");if(p)prods=p;
   draw();
@@ -377,7 +385,7 @@ function prow(p,ns){
   if(!ns&&tot>0){
     h+=`<div class="pills">`;
     const fzShow=uiFz?FZ.filter(f=>f.id===uiFz):FZ;
-    for(const f of fzShow){const q=gq(p.id,f.id);if(!q)continue;h+=`<span class="pill" style="background:${f.bg};color:${f.dk}">${f.n}: ${q}<button class="prm" onclick="event.stopPropagation();setQ('${p.id}',${f.id},${q-1})" style="color:${f.dk}" title="Remove 1">−</button></span>`;}
+    for(const f of fzShow){const q=gq(p.id,f.id);if(!q)continue;h+=`<span class="pill" style="background:${f.bg};color:${f.dk}"><span class="pill-info"><span class="pill-name">${f.n}</span><span class="pill-qty">${q}</span></span><button class="prm" onclick="event.stopPropagation();setQ('${p.id}',${f.id},${q-1})" style="color:${f.dk}" title="Remove 1">−</button></span>`;}
     h+=`</div>`;
   }else if(ns){h+=`<div style="font-size:11px;color:#8B7E74;font-style:italic">Not in stock — click to add</div>`;}
   if(nt)h+=`<div class="pnote">${nt}</div>`;
