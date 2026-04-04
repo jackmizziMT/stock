@@ -180,7 +180,7 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.2 · April 2026";
+const VER="v2.4 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
@@ -191,16 +191,22 @@ const BIN_URL=`https://api.jsonbin.io/v3/b/${BIN_ID}`;
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 
-let syncing=false;let syncPending=false;
+let syncing=false;let syncPending=false;let cloudLoaded=false;
 function setSyncStatus(msg,col){const el=document.getElementById('syncst');if(el){el.textContent=msg;el.style.color=col||'';}}
 async function syncToCloud(){
+  if(!cloudLoaded)return;
   if(syncing){syncPending=true;return;}
   syncing=true;setSyncStatus('saving...','#D97706');
   try{
-    await fetch(BIN_URL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
+    const r=await fetch(BIN_URL,{method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
       body:JSON.stringify({stock,notes,history:hist,thresholds,lastUpdated:lastUpd})});
+    if(!r.ok){const t=await r.text();throw new Error(`${r.status}: ${t}`);}
     setSyncStatus('saved','#0E9F6E');setTimeout(()=>setSyncStatus('synced','#8B7E74'),2000);
-  }catch(e){setSyncStatus('offline','#C4472A');console.warn('Sync failed',e);}
+  }catch(e){
+    setSyncStatus('save error: '+e.message,'#C4472A');
+    console.error('Sync failed',e);
+  }
   syncing=false;
   if(syncPending){syncPending=false;syncToCloud();}
 }
@@ -212,8 +218,8 @@ function sv(){
 async function loadFromCloud(){
   setSyncStatus('loading...','#D97706');
   try{
-    const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':false}});
-    if(!r.ok)throw new Error('fetch failed');
+    const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
+    if(!r.ok){const t=await r.text();throw new Error(`${r.status}: ${t}`);}
     const d=await r.json();
     if(d.stock)stock=d.stock;
     if(d.notes)notes=d.notes;
@@ -222,25 +228,17 @@ async function loadFromCloud(){
     if(d.lastUpdated)lastUpd=d.lastUpdated;
     lsSet("lk_s",stock);lsSet("lk_n",notes);lsSet("lk_h",hist);
     lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);
+    cloudLoaded=true;
     setSyncStatus('synced','#8B7E74');
   }catch(e){
-    setSyncStatus('offline — using local data','#C4472A');
-    console.warn('Cloud load failed, using local cache',e);
-    const s=lsGet("lk_s");if(s)stock=s;
-    const n=lsGet("lk_n");if(n)notes=n;
-    const h=lsGet("lk_h");if(Array.isArray(h))hist=h;
-    const t=lsGet("lk_t");if(t)thresholds=t;
-    const u=lsGet("lk_u");if(u)lastUpd=u;
+    setSyncStatus('load error: '+e.message,'#C4472A');
+    console.error('Cloud load failed',e);
+    cloudLoaded=true;
   }
 }
 
 function load(){
   const p=lsGet("lk_p");if(p)prods=p;
-  const s=lsGet("lk_s");if(s)stock=s;
-  const n=lsGet("lk_n");if(n)notes=n;
-  const h=lsGet("lk_h");if(Array.isArray(h))hist=h;
-  const t=lsGet("lk_t");if(t)thresholds=t;
-  const u=lsGet("lk_u");if(u)lastUpd=u;
   draw();
   loadFromCloud().then(()=>draw());
 }
