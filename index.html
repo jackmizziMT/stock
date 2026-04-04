@@ -101,7 +101,7 @@ textarea.fi{resize:none}
   <div class="hdr">
     <div>
       <div style="font-size:16px;font-weight:800">Kċina ta' Luċija</div>
-      <div style="font-size:10px;color:#8B7E74;margin-top:1px">Stock Manager</div>
+      <div style="font-size:10px;color:#8B7E74;margin-top:1px">Stock Manager · <span id="syncst">loading...</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span id="totval" style="background:#FFF0EC;color:#C4472A;font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px"></span>
@@ -180,21 +180,69 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.1 · April 2026";
+const VER="v2.2 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
+const BIN_ID="69d11b3faaba882197c43c17";
+const BIN_KEY="$2a$10$mMEjXv6rSu.AnHQwAgd7S.UQukuAlffYr8uBorhlVXUW1LepcoJk.";
+const BIN_URL=`https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 
+let syncing=false;let syncPending=false;
+function setSyncStatus(msg,col){const el=document.getElementById('syncst');if(el){el.textContent=msg;el.style.color=col||'';}}
+async function syncToCloud(){
+  if(syncing){syncPending=true;return;}
+  syncing=true;setSyncStatus('saving...','#D97706');
+  try{
+    await fetch(BIN_URL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
+      body:JSON.stringify({stock,notes,history:hist,thresholds,lastUpdated:lastUpd})});
+    setSyncStatus('saved','#0E9F6E');setTimeout(()=>setSyncStatus('synced','#8B7E74'),2000);
+  }catch(e){setSyncStatus('offline','#C4472A');console.warn('Sync failed',e);}
+  syncing=false;
+  if(syncPending){syncPending=false;syncToCloud();}
+}
+function sv(){
+  lsSet("lk_s",stock);lsSet("lk_p",prods);lsSet("lk_n",notes);
+  lsSet("lk_h",hist);lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);
+  syncToCloud();
+}
+async function loadFromCloud(){
+  setSyncStatus('loading...','#D97706');
+  try{
+    const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':false}});
+    if(!r.ok)throw new Error('fetch failed');
+    const d=await r.json();
+    if(d.stock)stock=d.stock;
+    if(d.notes)notes=d.notes;
+    if(Array.isArray(d.history))hist=d.history;
+    if(d.thresholds)thresholds=d.thresholds;
+    if(d.lastUpdated)lastUpd=d.lastUpdated;
+    lsSet("lk_s",stock);lsSet("lk_n",notes);lsSet("lk_h",hist);
+    lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);
+    setSyncStatus('synced','#8B7E74');
+  }catch(e){
+    setSyncStatus('offline — using local data','#C4472A');
+    console.warn('Cloud load failed, using local cache',e);
+    const s=lsGet("lk_s");if(s)stock=s;
+    const n=lsGet("lk_n");if(n)notes=n;
+    const h=lsGet("lk_h");if(Array.isArray(h))hist=h;
+    const t=lsGet("lk_t");if(t)thresholds=t;
+    const u=lsGet("lk_u");if(u)lastUpd=u;
+  }
+}
+
 function load(){
-  const s=lsGet("lk_s");if(s)stock=s;
   const p=lsGet("lk_p");if(p)prods=p;
+  const s=lsGet("lk_s");if(s)stock=s;
   const n=lsGet("lk_n");if(n)notes=n;
   const h=lsGet("lk_h");if(Array.isArray(h))hist=h;
   const t=lsGet("lk_t");if(t)thresholds=t;
   const u=lsGet("lk_u");if(u)lastUpd=u;
   draw();
+  loadFromCloud().then(()=>draw());
 }
 function sv(){lsSet("lk_s",stock);lsSet("lk_p",prods);lsSet("lk_n",notes);lsSet("lk_h",hist);lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);}
 
