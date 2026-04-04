@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kċina ta' Luċija — Stock Manager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#1C1511;background:#F8F5F0;min-height:100vh}
@@ -112,6 +113,7 @@ textarea.fi{resize:none}
       <div style="display:flex;border:1px solid #EDE8E1;border-radius:8px;overflow:hidden">
         <button id="tbstock" onclick="setTab('stock')" style="padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Stock</button>
         <button id="tbhist" onclick="setTab('history')" style="padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">History</button>
+        <button id="tbrecipes" onclick="setTab('recipes')" style="padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Recipes</button>
       </div>
     </div>
   </div>
@@ -184,10 +186,11 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.8 · April 2026";
+const VER="v3.0 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
+let recipes=[],recSrch="";
 const BIN_ID="69d11b3faaba882197c43c17";
 const BIN_KEY="$2a$10$mMEjXv6rSu.AnHQwAgd7S.UQukuAlffYr8uBorhlVXUW1LepcoJk.";
 const BIN_URL=`https://api.jsonbin.io/v3/b/${BIN_ID}`;
@@ -317,10 +320,15 @@ function toggleFz(fid){uiFz=(uiFz===fid?null:fid);drawMain();}
 
 function draw(){
   document.getElementById('totval').textContent=euro(totVal());
-  const ts=document.getElementById('tbstock'),th=document.getElementById('tbhist');
-  ts.style.cssText=`padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${uiTab==='stock'?'#C4472A':'#F5F1EC'};color:${uiTab==='stock'?'#fff':'#8B7E74'}`;
-  th.style.cssText=`padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${uiTab==='history'?'#C4472A':'#F5F1EC'};color:${uiTab==='history'?'#fff':'#8B7E74'}`;
-  drawSb();uiTab==='stock'?drawMain():drawHist();
+  const ts=document.getElementById('tbstock'),th=document.getElementById('tbhist'),tr=document.getElementById('tbrecipes');
+  const tStyle=(a)=>`padding:5px 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${a?'#C4472A':'#F5F1EC'};color:${a?'#fff':'#8B7E74'}`;
+  ts.style.cssText=tStyle(uiTab==='stock');
+  th.style.cssText=tStyle(uiTab==='history');
+  tr.style.cssText=tStyle(uiTab==='recipes');
+  drawSb();
+  if(uiTab==='stock')drawMain();
+  else if(uiTab==='history')drawHist();
+  else drawRecipes();
 }
 
 function drawSb(){
@@ -614,6 +622,99 @@ function openPurge(){
   h+=`<label style="display:flex;align-items:center;gap:10px;margin-bottom:16px;cursor:pointer"><input type="checkbox" id="pconf" style="width:16px;height:16px"><span style="font-size:13px;font-weight:600">I understand — reset all quantities to zero</span></label>`;
   h+=`<button class="pb" id="pbtn" style="background:#991B1B" disabled onclick="purgeAll()">Reset All Stock</button><button class="sb2" onclick="closeM()">Cancel</button>`;
   showM(h);document.getElementById('pconf').onchange=function(){document.getElementById('pbtn').disabled=!this.checked;};
+}
+
+function drawRecipes(){
+  const s=recSrch.toLowerCase().trim();
+  const list=recipes.filter(r=>!s||r.name.toLowerCase().includes(s)).sort((a,b)=>a.name.localeCompare(b.name));
+  const ingNames=new Set(prods.map(p=>p.name.toLowerCase()));
+  let h=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">`;
+  h+=`<div class="srch-wrap" style="flex:1;margin-bottom:0"><span class="sic">🔍</span><input class="srch" id="ri" placeholder="Search recipe..." value="${recSrch.replace(/"/g,'&quot;')}" oninput="recSrch=this.value;drawRecipes()">${recSrch?`<button class="sclr" onclick="recSrch='';drawRecipes()">×</button>`:''}</div>`;
+  h+=`<button onclick="document.getElementById('recfile').click()" style="flex-shrink:0;padding:9px 14px;border-radius:10px;background:#C4472A;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">Load File</button>`;
+  h+=`</div>`;
+  h+=`<input type="file" id="recfile" accept=".xlsx,.json" style="display:none" onchange="loadRecipeFile(this)">`;
+  if(!recipes.length){
+    h+=`<div style="text-align:center;padding:60px 20px;color:#8B7E74">`;
+    h+=`<div style="font-size:40px;margin-bottom:12px">📋</div>`;
+    h+=`<div style="font-weight:700;font-size:15px;margin-bottom:6px">No recipes loaded</div>`;
+    h+=`<div style="font-size:12px;line-height:1.7;max-width:300px;margin:0 auto">Click <strong>Load File</strong> and pick your Excel spreadsheet (.xlsx) or JSON file.<br><br>The file stays on your device — nothing is uploaded.</div>`;
+    h+=`</div>`;
+  } else {
+    h+=`<div class="meta"><strong>${list.length} recipes</strong>${s?` matching "${recSrch}"`:` · ${recipes.length} total`}</div>`;
+    for(const r of list){
+      h+=`<div class="pr" style="cursor:default;border-left:3px solid #C4472A">`;
+      h+=`<div class="pname" style="margin-bottom:8px">${r.name}</div>`;
+      h+=`<div style="display:flex;flex-direction:column;gap:2px">`;
+      for(const ing of r.ingredients){
+        const inStock=ingNames.has(ing.item.toLowerCase());
+        const qtyVal=parseFloat(ing.qty);
+        const qtyStr=isNaN(qtyVal)?String(ing.qty):(qtyVal%1===0?qtyVal.toString():qtyVal.toFixed(3).replace(/\.?0+$/,''));
+        h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #F5F1EC">`;
+        h+=`<span style="font-size:12px;color:#1C1511;display:flex;align-items:center;gap:6px">`;
+        h+=`<span style="width:8px;height:8px;border-radius:50%;background:${inStock?'#0E9F6E':'#EDE8E1'};flex-shrink:0;display:inline-block" title="${inStock?'In stock catalogue':'Not in catalogue'}"></span>`;
+        h+=`${ing.item}</span>`;
+        h+=`<span style="font-size:12px;font-weight:700;color:#8B7E74;white-space:nowrap;margin-left:12px">${qtyStr}${ing.unit?' '+ing.unit:''}</span>`;
+        h+=`</div>`;
+      }
+      h+=`</div></div>`;
+    }
+  }
+  document.getElementById('mn').innerHTML=h;
+  const ri=document.getElementById('ri');if(ri&&document.activeElement!==ri)ri.focus();
+}
+
+function parseXLSXtoRecipes(data){
+  const wb=XLSX.read(data,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  if(!rows.length)throw new Error('Empty spreadsheet');
+  const header=rows[0];
+  const result=[];
+  for(let col=3;col<header.length;col++){
+    const recipeName=header[col];
+    if(!recipeName)continue;
+    const ingredients=[];
+    for(let row=1;row<rows.length;row++){
+      const ingName=rows[row][0];
+      const unit=rows[row][1]||'';
+      const qty=rows[row][col];
+      if(ingName&&qty!==null&&qty!==''&&qty!==0){
+        const qtyNum=parseFloat(qty);
+        if(!isNaN(qtyNum)&&qtyNum>0){
+          ingredients.push({item:String(ingName),unit:String(unit),qty:Math.round(qtyNum*1000)/1000});
+        }
+      }
+    }
+    if(ingredients.length)result.push({name:String(recipeName),ingredients});
+  }
+  return result;
+}
+
+function loadRecipeFile(inp){
+  const f=inp.files[0];if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  const r=new FileReader();
+  if(ext==='xlsx'){
+    r.onload=ev=>{
+      try{
+        const data=new Uint8Array(ev.target.result);
+        if(typeof XLSX==='undefined')throw new Error('Excel reader not loaded yet — please try again in a moment');
+        recipes=parseXLSXtoRecipes(data);
+        recSrch='';drawRecipes();
+      }catch(e){alert('Could not read Excel file:\n'+e.message);}
+    };
+    r.readAsArrayBuffer(f);
+  }else{
+    r.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!Array.isArray(data))throw new Error('Expected a JSON array');
+        recipes=data;recSrch='';drawRecipes();
+      }catch(e){alert('Could not load file:\n'+e.message);}
+    };
+    r.readAsText(f);
+  }
+  inp.value='';
 }
 
 load();
