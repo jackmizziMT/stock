@@ -184,7 +184,7 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v2.7 · April 2026";
+const VER="v2.8 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
 let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
 let modal=null;
@@ -327,9 +327,20 @@ function drawSb(){
   const cs=dynCats(),lc=lowCount();
   let h=`<div class="sb-hd">Categories</div>`;
   h+=`<button class="cb${uiCat==='All'?' on':''}" onclick="uiCat='All';uiFz=null;drawMain()"><span>All</span><span style="font-size:10px;color:#8B7E74">${prods.length}</span></button>`;
-  for(const c of cs){const ing=ING.has(c),n=prods.filter(p=>p.c===c).length;h+=`<button class="cb${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=${JSON.stringify(c)};uiFz=null;drawMain()"><span>${c}</span><span style="font-size:10px;color:#8B7E74">${n}</span></button>`;}
+  for(const c of cs){
+    const ing=ING.has(c),n=prods.filter(p=>p.c===c).length;
+    h+=`<button class="cb${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=decodeURIComponent('${encodeURIComponent(c)}');uiFz=null;drawMain()"><span>${c}</span><span style="font-size:10px;color:#8B7E74">${n}</span></button>`;
+  }
   h+=`<div class="sb-hd" style="margin-top:4px">Storage</div>`;
-  for(const f of FZ){const items=fzItems(f.id),sel=uiFz===f.id;h+=`<div class="fzrow${sel?' on':''}" onclick="toggleFz(${f.id})"><span><span class="fzdot" style="background:${f.col}"></span>${f.n}</span><span style="font-size:10px">${items} items</span></div>`;}
+  for(const f of FZ){
+    const products=Object.entries(stock).filter(([,fz])=>(fz[f.id]??0)>0).length;
+    const units=Object.values(stock).reduce((s,fz)=>s+(fz[f.id]??0),0);
+    const sel=uiFz===f.id;
+    h+=`<div class="fzrow${sel?' on':''}" onclick="toggleFz(${f.id})">`;
+    h+=`<span><span class="fzdot" style="background:${f.col}"></span>${f.n}</span>`;
+    h+=`<span style="font-size:10px;text-align:right;line-height:1.5">${products} products<br><strong>${units} units</strong></span>`;
+    h+=`</div>`;
+  }
   if(lc>0)h+=`<button class="low-alert" onclick="showLowStock()">⚠ ${lc} low stock item${lc>1?'s':''}</button>`;
   h+=`<div class="sb-acts">`;
   h+=`<button class="abt" style="background:#C4472A;color:#fff" onclick="openAdd()">+ Add Stock</button>`;
@@ -354,14 +365,16 @@ function drawMain(){
     inStock=filtered.filter(p=>gt(p.id)>0);
     noStock=filtered.filter(p=>gt(p.id)===0);
   }
+  inStock.sort((a,b)=>a.name.localeCompare(b.name));
+  noStock.sort((a,b)=>a.name.localeCompare(b.name));
   let h=`<div class="mob-top"><div class="mob-cats"><button class="mcat${uiCat==='All'?' on':''}" onclick="uiCat='All';uiFz=null;drawMain()">All</button>`;
-  for(const c of cs){const ing=ING.has(c);h+=`<button class="mcat${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=${JSON.stringify(c)};uiFz=null;drawMain()">${c}</button>`;}
+  for(const c of cs){const ing=ING.has(c);h+=`<button class="mcat${ing?' ing':''}${uiCat===c?' on':''}" onclick="uiCat=decodeURIComponent('${encodeURIComponent(c)}');uiFz=null;drawMain()">${c}</button>`;}
   h+=`</div><div class="mob-acts"><button class="mabt" style="background:#C4472A;color:#fff" onclick="openAdd()">+ Add Stock</button><button class="mabt" style="background:#EDE8E1;color:#1C1511" onclick="exportCSV()">Export</button><button class="mabt" style="background:#FEF2F2;color:#991B1B" onclick="openPurge()">Reset</button></div></div>`;
-  if(uiFz){const f=FZ.find(x=>x.id===uiFz);h+=`<div class="fz-banner" style="background:${f.bg};border:1px solid ${f.col}33"><span style="color:${f.dk}"><span class="fzdot" style="background:${f.col}"></span>${f.n} — ${inStock.length} item${inStock.length!==1?'s':''}</span><button onclick="uiFz=null;drawMain()" style="background:none;border:none;cursor:pointer;font-size:16px;color:${f.dk};font-weight:700;line-height:1">×</button></div>`;}
+  if(uiFz){const f=FZ.find(x=>x.id===uiFz);const units=Object.values(stock).reduce((s,fz)=>s+(fz[f.id]??0),0);h+=`<div class="fz-banner" style="background:${f.bg};border:1px solid ${f.col}33"><span style="color:${f.dk}"><span class="fzdot" style="background:${f.col}"></span>${f.n} — ${inStock.length} product${inStock.length!==1?'s':''} · ${units} units</span><button onclick="uiFz=null;drawMain()" style="background:none;border:none;cursor:pointer;font-size:16px;color:${f.dk};font-weight:700;line-height:1">×</button></div>`;}
   h+=`<div class="srch-wrap"><span class="sic">🔍</span><input class="srch" id="si" placeholder="Search for a product..." value="${uiSrch.replace(/"/g,'&quot;')}" oninput="uiSrch=this.value;drawMain()">${uiSrch?`<button class="sclr" onclick="uiSrch='';drawMain()" title="Clear search">×</button>`:''}</div>`;
-  if(uiFz){h+=`<div class="meta"><strong>${inStock.length} items</strong> in ${FZ.find(x=>x.id===uiFz)?.n}</div>`;}
-  else if(s||uiCat!=='All'){h+=`<div class="meta">${inStock.length+noStock.length} results · <strong>${inStock.length} in stock</strong></div>`;}
-  else{h+=`<div class="meta"><strong>${inStock.length} items in stock</strong> · ${prods.length} total products</div>`;}
+  if(uiFz){const units=Object.values(stock).reduce((s,fz)=>s+(fz[uiFz]??0),0);h+=`<div class="meta"><strong>${inStock.length} products</strong> · <strong>${units} units</strong> in ${FZ.find(x=>x.id===uiFz)?.n}</div>`;}
+  else if(s||uiCat!=='All'){const totalUnits=inStock.reduce((s,p)=>s+gt(p.id),0);h+=`<div class="meta">${inStock.length+noStock.length} results · <strong>${inStock.length} products in stock</strong> · ${totalUnits} units</div>`;}
+  else{const totalUnits=inStock.reduce((s,p)=>s+gt(p.id),0);h+=`<div class="meta"><strong>${inStock.length} products in stock</strong> · <strong>${totalUnits} units total</strong> · ${prods.length} products in catalogue</div>`;}
   if(!inStock.length&&!s&&uiCat==='All'&&!uiFz){h+=`<div style="text-align:center;padding:60px 20px;color:#8B7E74"><div style="font-size:40px;margin-bottom:10px">🧊</div><div style="font-weight:700;font-size:15px">No stock yet</div><div style="font-size:12px;margin-top:4px">Use "+ Add Stock" to get started</div></div>`;}
   if(!inStock.length&&uiFz&&!s){h+=`<div style="text-align:center;padding:40px 20px;color:#8B7E74"><div style="font-size:32px;margin-bottom:8px">🧊</div><div style="font-weight:700">Nothing stored here yet</div></div>`;}
   for(const p of inStock)h+=prow(p,false);
@@ -419,7 +432,12 @@ function openDetail(pid){
   modal={type:'detail',pid};
   const p=prods.find(x=>x.id===pid);if(!p)return;
   const tot=gt(pid),cc=CC[p.c]||{bg:'#F3F4F6',tc:'#374151'};
-  let h=`<div class="mhnd"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px"><div class="mtitle" style="margin-bottom:0;flex:1;padding-right:8px">${p.name}</div>${tot>0?`<button onclick="if(confirm('Remove all stock for ${p.name.replace(/'/g,"\\'")}?')){zeroP('${pid}')}" title="Zero all stock for this product" style="flex-shrink:0;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px;color:#991B1B;line-height:1" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">🗑</button>`:''}</div>`;
+  let h=`<div class="mhnd"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px">`;
+  h+=`<div class="mtitle" style="margin-bottom:0;flex:1;padding-right:8px">${p.name}</div>`;
+  h+=`<div style="display:flex;gap:6px;flex-shrink:0">`;
+  h+=`<button onclick="openEditProduct('${pid}')" title="Edit product details" style="background:#F5F1EC;border:1px solid #EDE8E1;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px;line-height:1">✏️</button>`;
+  h+=tot>0?`<button onclick="if(confirm('Remove all stock for ${p.name.replace(/'/g,"\\'")}?')){zeroP('${pid}')}" title="Zero all stock" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px;color:#991B1B;line-height:1" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">🗑</button>`:'';
+  h+=`</div></div>`;
   h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:#8B7E74">`;
   if(p.d)h+=`<span>${p.d}</span>`;
   h+=`<span class="bdg" style="background:${cc.bg};color:${cc.tc}">${p.c}</span>`;
@@ -444,6 +462,35 @@ function openDetail(pid){
   h+=`</div>`;
   h+=`<button class="sb2" onclick="closeM();draw()">Done</button>`;
   showM(h);
+}
+
+function openEditProduct(pid){
+  const p=prods.find(x=>x.id===pid);if(!p)return;
+  modal={type:'editprod',pid};
+  const cats=dynCats();
+  let h=`<div class="mhnd"></div><div class="mtitle">Edit Product</div>`;
+  h+=`<label class="lbl">Name</label><input class="fi" id="ep-n" placeholder="Product name">`;
+  h+=`<label class="lbl">Description</label><input class="fi" id="ep-d" placeholder="e.g. 4 pax">`;
+  h+=`<label class="lbl">Price (€)</label><input class="fi" id="ep-p" type="number" placeholder="0.00">`;
+  h+=`<label class="lbl">Category</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">`;
+  for(const c of cats){const ing=ING.has(c);const on=p.c===c;h+=`<button class="tag ep-cat${on?' on':''}" data-c="${c}" onclick="document.querySelectorAll('.ep-cat').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="${ing?(on?'border-color:#16a34a;background:#DCFCE7;color:#166534':'border-color:#16a34a'):''}">${c}</button>`;}
+  h+=`</div>`;
+  h+=`<button class="pb" onclick="saveEditProduct('${pid}')">Save Changes</button>`;
+  h+=`<button class="sb2" onclick="closeM();openDetail('${pid}')">Cancel</button>`;
+  showM(h);
+  setTimeout(()=>{
+    const n=document.getElementById('ep-n');if(n)n.value=p.name;
+    const d=document.getElementById('ep-d');if(d)d.value=p.d||'';
+    const pr=document.getElementById('ep-p');if(pr)pr.value=p.p||'';
+    if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}
+  },30);
+}
+function saveEditProduct(pid){
+  const nm=document.getElementById('ep-n')?.value.trim();if(!nm)return;
+  const selCat=document.querySelector('.ep-cat.on');
+  const idx=prods.findIndex(x=>x.id===pid);if(idx<0)return;
+  prods[idx]={...prods[idx],name:nm,d:document.getElementById('ep-d')?.value.trim()||'',p:parseFloat(document.getElementById('ep-p')?.value)||0,c:selCat?selCat.getAttribute('data-c'):prods[idx].c};
+  sv();closeM();draw();
 }
 
 function openAdd(){modal={type:'add',step:1,pid:null,fid:null,qty:1,srch:''};renderAdd();}
