@@ -186,9 +186,10 @@ const FZ=[
 ];
 const CC={Dessert:{bg:"#FCE7F3",tc:"#9D174D"},Ftajjar:{bg:"#FFF7ED",tc:"#C2410C"},Pasta:{bg:"#FEFCE8",tc:"#854D0E"},Torti:{bg:"#FFFBEB",tc:"#78350F"},"Ħaxix":{bg:"#DCFCE7",tc:"#166534"},"Ħut":{bg:"#CFFAFE",tc:"#0E7490"},"Laħam":{bg:"#FEE2E2",tc:"#991B1B"}};
 const ING=new Set(["Ħaxix","Ħut","Laħam"]);
-const VER="v3.0 · April 2026";
+const VER="v3.3 · April 2026";
 let prods=[...PI],stock={},notes={},hist=[],thresholds={},lastUpd={};
-let uiSrch="",uiCat="All",uiTab="stock",uiFz=null;
+let batchNotes={},packedDates={};
+let uiSrch="",uiCat="All",uiTab="stock",uiFz=null,uiStocktake=false;
 let modal=null;
 let recipes=[],recSrch="";
 const BIN_ID="69d11b3faaba882197c43c17";
@@ -207,7 +208,7 @@ async function syncToCloud(){
   try{
     const r=await fetch(BIN_URL,{method:'PUT',
       headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
-      body:JSON.stringify({stock,notes,history:hist,thresholds,lastUpdated:lastUpd})});
+      body:JSON.stringify({stock,notes,history:hist,thresholds,lastUpdated:lastUpd,batchNotes,packedDates})});
     if(!r.ok){const t=await r.text();throw new Error(`${r.status}: ${t}`);}
     setSyncStatus('saved','#0E9F6E');setTimeout(()=>setSyncStatus('synced','#8B7E74'),2000);
   }catch(e){
@@ -220,6 +221,7 @@ async function syncToCloud(){
 function sv(){
   lsSet("lk_s",stock);lsSet("lk_p",prods);lsSet("lk_n",notes);
   lsSet("lk_h",hist);lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);
+  lsSet("lk_bn",batchNotes);lsSet("lk_pd",packedDates);
   syncToCloud();
 }
 async function loadFromCloud(){
@@ -233,6 +235,8 @@ async function loadFromCloud(){
     if(Array.isArray(d.history))hist=d.history;
     if(d.thresholds)thresholds=d.thresholds;
     if(d.lastUpdated)lastUpd=d.lastUpdated;
+    if(d.batchNotes)batchNotes=d.batchNotes;
+    if(d.packedDates)packedDates=d.packedDates;
     lsSet("lk_s",stock);lsSet("lk_n",notes);lsSet("lk_h",hist);
     lsSet("lk_t",thresholds);lsSet("lk_u",lastUpd);
     cloudLoaded=true;
@@ -250,6 +254,8 @@ function manualSync(){
 }
 function load(){
   const p=lsGet("lk_p");if(p)prods=p;
+  const bn=lsGet("lk_bn");if(bn)batchNotes=bn;
+  const pd=lsGet("lk_pd");if(pd)packedDates=pd;
   draw();
   loadFromCloud().then(()=>draw());
 }
@@ -283,10 +289,18 @@ function setQ(pid,fid,qty){
   if(d!==0){const pr=prods.find(p=>p.id===pid);addLog(d>0?'add':'remove',pr?.name,Math.abs(d),FZ.find(f=>f.id===fid)?.n,null);lastUpd[pid]=Date.now();}
   sv();draw();if(modal?.pid===pid)openDetail(pid);
 }
-function addS(pid,fid,qty){
+const bnKey=(pid,fid)=>`${pid}__${fid}`;
+const getBN=(pid,fid)=>batchNotes[bnKey(pid,fid)]||'';
+const getPD=(pid,fid)=>packedDates[bnKey(pid,fid)]||'';
+
+function addS(pid,fid,qty,note,date){
   if(!stock[pid])stock[pid]={};stock[pid][fid]=(stock[pid][fid]??0)+qty;
   const pr=prods.find(p=>p.id===pid);addLog('add',pr?.name,qty,FZ.find(f=>f.id===fid)?.n,null);
-  lastUpd[pid]=Date.now();sv();closeM();draw();
+  lastUpd[pid]=Date.now();
+  const k=bnKey(pid,fid);
+  if(note)batchNotes[k]=note;
+  if(date)packedDates[k]=date;
+  sv();closeM();draw();
 }
 function doTx(pid,from,to,qty){
   const av=gq(pid,from);const act=Math.min(qty,av);if(!act)return;
@@ -315,7 +329,7 @@ function exportCSV(){
   a.href=url;a.download=`stock_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
 }
 
-function setTab(t){uiTab=t;draw();}
+function setTab(t){uiTab=t;document.getElementById('mn').innerHTML='';draw();}
 function toggleFz(fid){uiFz=(uiFz===fid?null:fid);drawMain();}
 
 function draw(){
@@ -352,6 +366,7 @@ function drawSb(){
   if(lc>0)h+=`<button class="low-alert" onclick="showLowStock()">⚠ ${lc} low stock item${lc>1?'s':''}</button>`;
   h+=`<div class="sb-acts">`;
   h+=`<button class="abt" style="background:#C4472A;color:#fff" onclick="openAdd()">+ Add Stock</button>`;
+  h+=`<button class="abt" style="background:#1A56DB;color:#fff" onclick="startStocktake()">Stock-take Mode</button>`;
   h+=`<button class="abt" style="background:#EDE8E1;color:#1C1511" onclick="exportCSV()">Export CSV</button>`;
   h+=`<button class="abt" style="background:#EDE8E1;color:#8B7E74" onclick="openImport()">Import CSV</button>`;
   h+=`<button class="abt" style="background:#FEF2F2;color:#991B1B" onclick="openPurge()">Reset All</button>`;
@@ -408,6 +423,13 @@ function prow(p,ns){
     const fzShow=uiFz?FZ.filter(f=>f.id===uiFz):FZ;
     for(const f of fzShow){const q=gq(p.id,f.id);if(!q)continue;h+=`<span class="pill" style="background:${f.bg};color:${f.dk}"><span class="pill-info"><span class="pill-name">${f.n}</span><span class="pill-qty">${q}</span></span><button class="prm" onclick="event.stopPropagation();setQ('${p.id}',${f.id},${q-1})" style="color:${f.dk}" title="Remove 1">−</button></span>`;}
     h+=`</div>`;
+    const fzShow2=uiFz?FZ.filter(f=>f.id===uiFz):FZ;
+    const batchLines=fzShow2.filter(f=>gq(p.id,f.id)>0&&(getBN(p.id,f.id)||getPD(p.id,f.id)));
+    for(const f of batchLines){
+      const bn=getBN(p.id,f.id);const pd=getPD(p.id,f.id);
+      const parts=[];if(pd)parts.push(`Packed ${pd}`);if(bn)parts.push(bn);
+      if(parts.length)h+=`<div style="font-size:10px;color:${f.dk};margin-top:3px;padding:2px 7px;background:${f.bg};border-radius:5px;display:inline-block">${f.n}: ${parts.join(' · ')}</div> `;
+    }
   }else if(ns){h+=`<div style="font-size:11px;color:#8B7E74;font-style:italic">Not in stock — click to add</div>`;}
   if(nt)h+=`<div class="pnote">${nt}</div>`;
   if(lu&&tot>0)h+=`<div class="upd-ts">Updated ${relTime(lu)}</div>`;
@@ -432,6 +454,51 @@ function drawHist(){
   document.getElementById('mn').innerHTML=h;
 }
 
+let stIdx=0;let stList=[];
+function startStocktake(){
+  stList=prods.filter(p=>gt(p.id)>0).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!stList.length){alert('No items in stock to count.');return;}
+  stIdx=0;openStocktake();
+}
+function openStocktake(){
+  const p=stList[stIdx];if(!p)return closeM();
+  const tot=gt(p.id);const cc=CC[p.c]||{bg:'#F3F4F6',tc:'#374151'};
+  let h=`<div class="mhnd"></div>`;
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">`;
+  h+=`<div style="font-size:11px;color:#8B7E74">Stock-take · ${stIdx+1} of ${stList.length}</div>`;
+  h+=`<button onclick="closeM()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#8B7E74;line-height:1">×</button>`;
+  h+=`</div>`;
+  h+=`<div style="background:#F5F1EC;border-radius:8px;height:4px;margin-bottom:14px"><div style="background:#C4472A;height:4px;border-radius:8px;width:${Math.round(((stIdx+1)/stList.length)*100)}%"></div></div>`;
+  h+=`<div class="mtitle">${p.name}</div>`;
+  h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:#8B7E74">${p.d} · <span class="bdg" style="background:${cc.bg};color:${cc.tc}">${p.c}</span> · <strong>${tot} recorded</strong></div>`;
+  for(const f of FZ){
+    const q=gq(p.id,f.id);if(!q)continue;
+    h+=`<div style="background:${f.bg};border-radius:10px;padding:10px 14px;margin-bottom:8px;border:1.5px solid ${f.col}">`;
+    h+=`<div style="font-size:11px;font-weight:700;color:${f.dk};margin-bottom:8px">${f.n} — recorded: <strong>${q}</strong></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:8px">`;
+    h+=`<button onclick="stAdjust('${p.id}',${f.id},-1)" style="width:48px;height:48px;border-radius:10px;border:none;background:rgba(0,0,0,.1);font-size:24px;font-weight:700;cursor:pointer;color:${f.dk};font-family:inherit;display:flex;align-items:center;justify-content:center">−</button>`;
+    h+=`<input id="stq_${f.id}" type="number" value="${q}" min="0" style="flex:1;text-align:center;padding:10px;border-radius:10px;border:2px solid ${f.col};font-size:24px;font-weight:800;font-family:inherit;outline:none;background:#fff">`;
+    h+=`<button onclick="stAdjust('${p.id}',${f.id},1)" style="width:48px;height:48px;border-radius:10px;border:none;background:${f.col};font-size:24px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit;display:flex;align-items:center;justify-content:center">+</button>`;
+    h+=`</div></div>`;
+  }
+  h+=`<button class="pb" onclick="stSave('${p.id}')" style="margin-top:8px">Save & Next →</button>`;
+  if(stIdx>0)h+=`<button class="sb2" onclick="stIdx--;openStocktake()">← Previous</button>`;
+  showM(h);
+}
+function stAdjust(pid,fid,delta){
+  const inp=document.getElementById(`stq_${fid}`);
+  if(inp)inp.value=Math.max(0,parseInt(inp.value||0)+delta);
+}
+function stSave(pid){
+  FZ.forEach(f=>{
+    const inp=document.getElementById(`stq_${f.id}`);
+    if(inp){const v=parseInt(inp.value)||0;if(v!==gq(pid,f.id))setQ(pid,f.id,v);}
+  });
+  stIdx++;
+  if(stIdx>=stList.length){closeM();alert(`Stock-take complete! ${stList.length} items reviewed.`);}
+  else openStocktake();
+}
+
 function showM(html){document.getElementById('md').innerHTML=html;document.getElementById('ov').classList.add('show');}
 function closeM(){modal=null;document.getElementById('ov').classList.remove('show');}
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
@@ -454,14 +521,26 @@ function openDetail(pid){
   if(tot>0){h+=`<div style="display:flex;gap:8px;margin-bottom:13px"><span style="background:#F3EDE8;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700">${tot} units total</span>`;if(p.p>0)h+=`<span style="background:#FFF0EC;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#C4472A">${euro(tot*p.p)}</span>`;h+=`</div>`;}
   for(const f of FZ){
     const q=gq(pid,f.id),has=q>0;
+    const bn=getBN(pid,f.id);const pd=getPD(pid,f.id);
     h+=`<div class="dfz" style="background:${has?f.bg:'#F9F6F2'};border:1.5px solid ${has?f.col:'#EDE8E1'}">`;
-    h+=`<div><div style="font-size:12px;font-weight:700;color:${has?f.dk:'#8B7E74'}">${f.n}</div>`;
-    h+=`<div style="font-size:10px;color:${has?f.col:'#8B7E74'}">${has?`${q} unit${q!==1?'s':''}${p.p>0?` · ${euro(q*p.p)}`:''}` :'Empty'}</div></div>`;
+    h+=`<div style="flex:1;min-width:0">`;
+    h+=`<div style="display:flex;align-items:center;justify-content:space-between;gap:6px">`;
+    h+=`<div style="font-size:12px;font-weight:700;color:${has?f.dk:'#8B7E74'}">${f.n}</div>`;
     h+=`<div style="display:flex;align-items:center;gap:5px">`;
     if(has)h+=`<button onclick="openTx('${pid}',${f.id})" style="padding:3px 9px;font-size:10px;font-weight:700;border-radius:6px;background:transparent;border:1.5px solid ${f.col};color:${f.dk};cursor:pointer;font-family:inherit;white-space:nowrap">Transfer</button>`;
     h+=`<button class="mini" style="background:#F3EDE8;color:#1C1511" onclick="setQ('${pid}',${f.id},${q-1})">−</button>`;
     h+=`<span style="font-size:16px;font-weight:800;color:${has?f.col:'#8B7E74'};min-width:26px;text-align:center">${q}</span>`;
     h+=`<button class="mini" style="background:${f.col};color:#fff" onclick="setQ('${pid}',${f.id},${q+1})">+</button>`;
+    h+=`</div></div>`;
+    h+=`<div style="font-size:10px;color:${has?f.col:'#8B7E74'};margin-top:2px">${has?`${q} unit${q!==1?'s':''}${p.p>0?` · ${euro(q*p.p)}`:''}` :'Empty'}</div>`;
+    if(has){
+      h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px">`;
+      h+=`<div><div style="font-size:9px;font-weight:700;color:#8B7E74;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em">Packed on</div>`;
+      h+=`<input type="date" value="${pd}" onchange="packedDates[bnKey('${pid}',${f.id})]=this.value;sv()" style="width:100%;padding:4px 6px;border-radius:6px;border:1px solid #EDE8E1;font-size:11px;font-family:inherit;outline:none;background:#FAF8F4"></div>`;
+      h+=`<div><div style="font-size:9px;font-weight:700;color:#8B7E74;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em">Batch note</div>`;
+      h+=`<input type="text" value="${bn.replace(/"/g,'&quot;')}" placeholder="e.g. no cream" onblur="batchNotes[bnKey('${pid}',${f.id})]=this.value;sv()" style="width:100%;padding:4px 6px;border-radius:6px;border:1px solid #EDE8E1;font-size:11px;font-family:inherit;outline:none;background:#FAF8F4"></div>`;
+      h+=`</div>`;
+    }
     h+=`</div></div>`;
   }
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;margin-bottom:10px">`;
@@ -501,7 +580,7 @@ function saveEditProduct(pid){
   sv();closeM();draw();
 }
 
-function openAdd(){modal={type:'add',step:1,pid:null,fid:null,qty:1,srch:''};renderAdd();}
+function openAdd(){modal={type:'add',step:1,pid:null,fid:null,qty:1,srch:'',note:'',date:new Date().toISOString().slice(0,10)};renderAdd();}
 function renderAdd(){
   const m=modal;
   let h=`<div class="mhnd"></div><div class="mtitle">Add to Stock</div>`;
@@ -525,7 +604,14 @@ function renderAdd(){
     for(const f of FZ){const sel=m.fid===f.id;h+=`<button class="fzo" style="${sel?`border-color:${f.col};background:${f.bg};color:${f.dk}`:''}" onclick="modal.fid=${f.id};renderAdd()">${f.n}<br><span style="font-size:10px;opacity:.7">has ${gq(m.pid,f.id)}</span></button>`;}
     h+=`</div><label class="lbl">Quantity</label>`;
     h+=`<div class="qc"><button class="qbtn" style="background:#F3EDE8;color:#1C1511" onclick="if(modal.qty>1){modal.qty--;renderAdd()}">−</button><input class="qi" type="number" value="${m.qty}" min="1" onchange="modal.qty=Math.max(1,parseInt(this.value)||1);renderAdd()"><button class="qbtn" style="background:#C4472A;color:#fff" onclick="modal.qty++;renderAdd()">+</button></div>`;
-    h+=`<button class="pb" ${!m.fid?'disabled':''} onclick="addS('${m.pid||''}',modal.fid,modal.qty)">Add to Stock</button>`;
+    h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">`;
+    h+=`<div><label class="lbl">Packed on</label><input class="fi" id="add-date" type="date" style="margin-bottom:0" value="${m.date}"></div>`;
+    h+=`<div><label class="lbl">Batch note (optional)</label><input class="fi" id="add-note" style="margin-bottom:0" placeholder="e.g. no cream" value="${m.note.replace(/"/g,'&quot;')}"></div>`;
+    h+=`</div>`;
+    h+=`<button class="pb" ${!m.fid?'disabled':''} onclick="
+      const note=document.getElementById('add-note')?.value.trim()||'';
+      const date=document.getElementById('add-date')?.value||'';
+      addS('${m.pid||''}',modal.fid,modal.qty,note,date)">Add to Stock</button>`;
     h+=`<button class="sb2" onclick="modal.step=1;renderAdd()">← Change Product</button>`;
   }
   showM(h);const asi=document.getElementById('asrch');if(asi)asi.focus();
@@ -625,43 +711,73 @@ function openPurge(){
 }
 
 function drawRecipes(){
+  const mn=document.getElementById('mn');
+  if(!mn)return;
+  if(!document.getElementById('rec-header')){
+    mn.innerHTML=`
+      <div id="rec-header" style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <div class="srch-wrap" style="flex:1;margin-bottom:0">
+          <span class="sic">🔍</span>
+          <input class="srch" id="ri" placeholder="Search recipe...">
+        </div>
+        <button onclick="document.getElementById('recfile').click()" style="flex-shrink:0;padding:9px 14px;border-radius:10px;background:#C4472A;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">Load File</button>
+      </div>
+      <input type="file" id="recfile" accept=".xlsx,.json" style="display:none" onchange="loadRecipeFile(this)">
+      <div id="rec-results"></div>`;
+    const ri=document.getElementById('ri');
+    if(ri){
+      ri.value=recSrch;
+      ri.oninput=function(){recSrch=this.value;drawRecipeResults();};
+      ri.focus();
+    }
+  }
+  drawRecipeResults();
+}
+
+function drawRecipeResults(){
   const s=recSrch.toLowerCase().trim();
   const list=recipes.filter(r=>!s||r.name.toLowerCase().includes(s)).sort((a,b)=>a.name.localeCompare(b.name));
-  const ingNames=new Set(prods.map(p=>p.name.toLowerCase()));
-  let h=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">`;
-  h+=`<div class="srch-wrap" style="flex:1;margin-bottom:0"><span class="sic">🔍</span><input class="srch" id="ri" placeholder="Search recipe..." value="${recSrch.replace(/"/g,'&quot;')}" oninput="recSrch=this.value;drawRecipes()">${recSrch?`<button class="sclr" onclick="recSrch='';drawRecipes()">×</button>`:''}</div>`;
-  h+=`<button onclick="document.getElementById('recfile').click()" style="flex-shrink:0;padding:9px 14px;border-radius:10px;background:#C4472A;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">Load File</button>`;
-  h+=`</div>`;
-  h+=`<input type="file" id="recfile" accept=".xlsx,.json" style="display:none" onchange="loadRecipeFile(this)">`;
+  const el=document.getElementById('rec-results');
+  if(!el)return;
+  let h='';
   if(!recipes.length){
-    h+=`<div style="text-align:center;padding:60px 20px;color:#8B7E74">`;
-    h+=`<div style="font-size:40px;margin-bottom:12px">📋</div>`;
-    h+=`<div style="font-weight:700;font-size:15px;margin-bottom:6px">No recipes loaded</div>`;
-    h+=`<div style="font-size:12px;line-height:1.7;max-width:300px;margin:0 auto">Click <strong>Load File</strong> and pick your Excel spreadsheet (.xlsx) or JSON file.<br><br>The file stays on your device — nothing is uploaded.</div>`;
-    h+=`</div>`;
+    h=`<div style="text-align:center;padding:60px 20px;color:#8B7E74">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">No recipes loaded</div>
+      <div style="font-size:12px;line-height:1.7;max-width:300px;margin:0 auto">Click <strong>Load File</strong> and pick your Excel spreadsheet (.xlsx) or JSON file.<br><br>The file stays on your device — nothing is uploaded.</div>
+    </div>`;
   } else {
-    h+=`<div class="meta"><strong>${list.length} recipes</strong>${s?` matching "${recSrch}"`:` · ${recipes.length} total`}</div>`;
+    h+=`<div class="meta"><strong>${list.length} recipes</strong>${s?` matching "${recSrch}"`:` · ${recipes.length} total · tap to expand`}</div>`;
     for(const r of list){
-      h+=`<div class="pr" style="cursor:default;border-left:3px solid #C4472A">`;
-      h+=`<div class="pname" style="margin-bottom:8px">${r.name}</div>`;
-      h+=`<div style="display:flex;flex-direction:column;gap:2px">`;
+      const rid='rec_'+r.name.replace(/[^a-z0-9]/gi,'_');
+      h+=`<div class="pr" style="border-left:3px solid #C4472A" onclick="toggleRecipe('${rid}')">`;
+      h+=`<div style="display:flex;justify-content:space-between;align-items:center">`;
+      h+=`<div class="pname">${r.name}</div>`;
+      h+=`<span style="font-size:11px;color:#8B7E74;flex-shrink:0;margin-left:8px">${r.ingredients.length} ingredients ▾</span>`;
+      h+=`</div>`;
+      h+=`<div id="${rid}" style="display:none;margin-top:8px;border-top:1px solid #EDE8E1;padding-top:8px">`;
       for(const ing of r.ingredients){
-        const inStock=ingNames.has(ing.item.toLowerCase());
+        const matchProd=prods.find(p=>p.name.toLowerCase()===ing.item.toLowerCase());
+        const stockQty=matchProd?gt(matchProd.id):0;
+        const inCat=!!matchProd;
         const qtyVal=parseFloat(ing.qty);
         const qtyStr=isNaN(qtyVal)?String(ing.qty):(qtyVal%1===0?qtyVal.toString():qtyVal.toFixed(3).replace(/\.?0+$/,''));
-        h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #F5F1EC">`;
-        h+=`<span style="font-size:12px;color:#1C1511;display:flex;align-items:center;gap:6px">`;
-        h+=`<span style="width:8px;height:8px;border-radius:50%;background:${inStock?'#0E9F6E':'#EDE8E1'};flex-shrink:0;display:inline-block" title="${inStock?'In stock catalogue':'Not in catalogue'}"></span>`;
-        h+=`${ing.item}</span>`;
+        const dotCol=stockQty>0?'#0E9F6E':inCat?'#D97706':'#EDE8E1';
+        const dotTitle=stockQty>0?`In stock: ${stockQty} units`:inCat?'In catalogue — not in stock':'Not tracked';
+        h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #F5F1EC">`;
+        h+=`<span style="font-size:12px;color:#1C1511;display:flex;align-items:center;gap:6px;flex:1;min-width:0">`;
+        h+=`<span style="width:8px;height:8px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block" title="${dotTitle}"></span>`;
+        h+=`<span>${ing.item}${stockQty>0?` <span style="font-size:10px;color:#0E9F6E;font-weight:700">(${stockQty})</span>`:''}</span>`;
+        h+=`</span>`;
         h+=`<span style="font-size:12px;font-weight:700;color:#8B7E74;white-space:nowrap;margin-left:12px">${qtyStr}${ing.unit?' '+ing.unit:''}</span>`;
         h+=`</div>`;
       }
       h+=`</div></div>`;
     }
   }
-  document.getElementById('mn').innerHTML=h;
-  const ri=document.getElementById('ri');if(ri&&document.activeElement!==ri)ri.focus();
+  el.innerHTML=h;
 }
+function toggleRecipe(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
 
 function parseXLSXtoRecipes(data){
   const wb=XLSX.read(data,{type:'array'});
@@ -709,7 +825,9 @@ function loadRecipeFile(inp){
       try{
         const data=JSON.parse(ev.target.result);
         if(!Array.isArray(data))throw new Error('Expected a JSON array');
-        recipes=data;recSrch='';drawRecipes();
+        recipes=data;recSrch='';
+        const ri=document.getElementById('ri');if(ri)ri.value='';
+        drawRecipeResults();
       }catch(e){alert('Could not load file:\n'+e.message);}
     };
     r.readAsText(f);
